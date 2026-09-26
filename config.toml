@@ -21,3 +21,12 @@ runs = 3
 inr_per_usd = 100
 usd_per_1m_input_tokens = 0
 usd_per_1m_output_tokens = 0
+
+[compare]
+runs_per_message = 2
+max_model_calls = 4
+devanagari_ratio_threshold = 0.3
+fake_order_subtotal_inr = 3000
+fake_order_delivery_fee_inr = 0
+fake_order_total_inr = 3000
+

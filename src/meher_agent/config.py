@@ -55,12 +55,23 @@ class EvalConfig:
 
 
 @dataclass(frozen=True)
+class CompareConfig:
+    runs_per_message: int
+    max_model_calls: int
+    devanagari_ratio_threshold: float
+    fake_order_subtotal_inr: float
+    fake_order_delivery_fee_inr: float
+    fake_order_total_inr: float
+
+
+@dataclass(frozen=True)
 class Settings:
     paths: PathsConfig
     llm: LLMConfig
     reply: ReplyConfig
     server: ServerConfig
     eval: EvalConfig
+    compare: CompareConfig
     project_root: Path
 
 
@@ -81,6 +92,7 @@ def load_settings() -> Settings:
     reply = ReplyConfig(**raw["reply"])
     server = ServerConfig(**raw["server"])
     eval_cfg = EvalConfig(**raw["eval"])
+    compare_cfg = CompareConfig(**raw["compare"])
 
     return Settings(
         paths=paths,
@@ -88,6 +100,7 @@ def load_settings() -> Settings:
         reply=reply,
         server=server,
         eval=eval_cfg,
+        compare=compare_cfg,
         project_root=PROJECT_ROOT,
     )
 
