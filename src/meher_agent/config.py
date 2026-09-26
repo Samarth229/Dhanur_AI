@@ -25,6 +25,7 @@ class PathsConfig:
     data_dir: Path
     evals_dir: Path
     reports_dir: Path
+    lexicon: Path
 
 
 @dataclass(frozen=True)
@@ -55,6 +56,14 @@ class EvalConfig:
 
 
 @dataclass(frozen=True)
+class RetrievalConfig:
+    mode: str
+    top_k: int
+    min_score: float
+    history_weight: float
+
+
+@dataclass(frozen=True)
 class CompareConfig:
     runs_per_message: int
     max_model_calls: int
@@ -71,6 +80,7 @@ class Settings:
     reply: ReplyConfig
     server: ServerConfig
     eval: EvalConfig
+    retrieval: RetrievalConfig
     compare: CompareConfig
     project_root: Path
 
@@ -87,11 +97,13 @@ def load_settings() -> Settings:
         data_dir=(PROJECT_ROOT / raw["paths"]["data_dir"]).resolve(),
         evals_dir=(PROJECT_ROOT / raw["paths"]["evals_dir"]).resolve(),
         reports_dir=(PROJECT_ROOT / raw["paths"]["reports_dir"]).resolve(),
+        lexicon=(PROJECT_ROOT / raw["paths"]["lexicon"]).resolve(),
     )
     llm = LLMConfig(**raw["llm"])
     reply = ReplyConfig(**raw["reply"])
     server = ServerConfig(**raw["server"])
     eval_cfg = EvalConfig(**raw["eval"])
+    retrieval_cfg = RetrievalConfig(**raw["retrieval"])
     compare_cfg = CompareConfig(**raw["compare"])
 
     return Settings(
@@ -100,6 +112,7 @@ def load_settings() -> Settings:
         reply=reply,
         server=server,
         eval=eval_cfg,
+        retrieval=retrieval_cfg,
         compare=compare_cfg,
         project_root=PROJECT_ROOT,
     )

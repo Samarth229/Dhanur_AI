@@ -1,4 +1,4 @@
-.PHONY: run test eval check-llm
+.PHONY: run test eval check-llm retrieve
 
 run:
 	python manage.py run
@@ -11,3 +11,6 @@ eval:
 
 check-llm:
 	python manage.py check-llm
+
+retrieve:
+	python manage.py retrieve "$(MESSAGE)"

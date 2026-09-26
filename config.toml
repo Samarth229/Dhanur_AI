@@ -2,6 +2,7 @@
 data_dir = "data"
 evals_dir = "evals"
 reports_dir = "reports"
+lexicon = "src/meher_agent/resources/lexicon.toml"
 
 [llm]
 temperature = 0.1
@@ -21,6 +22,12 @@ runs = 3
 inr_per_usd = 100
 usd_per_1m_input_tokens = 0
 usd_per_1m_output_tokens = 0
+
+[retrieval]
+mode = "full"           # "full" = all data in the prompt, relevant sections shown first; "topk" = only the top sections
+top_k = 4
+min_score = 1.0
+history_weight = 0.5    # weight of earlier user turns, for follow-ups like "make it 3 kg"
 
 [compare]
 runs_per_message = 2

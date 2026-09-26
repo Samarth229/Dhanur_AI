@@ -9,6 +9,10 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent
 SRC_DIR = PROJECT_ROOT / "src"
 
+# Ensure Devanagari and other non-ASCII output print correctly regardless of
+# the terminal's default codepage (notably cp1252 on Windows).
+sys.stdout.reconfigure(encoding="utf-8")
+
 
 def cmd_run(args: argparse.Namespace) -> int:
     sys.path.insert(0, str(SRC_DIR))
@@ -44,6 +48,21 @@ def cmd_check_llm(args: argparse.Namespace) -> int:
     return subprocess.call([sys.executable, str(PROJECT_ROOT / "scripts" / "check_llm.py")])
 
 
+def cmd_retrieve(args: argparse.Namespace) -> int:
+    sys.path.insert(0, str(SRC_DIR))
+    from meher_agent.retrieval import retrieve
+
+    hits = retrieve(args.message)
+    if not hits:
+        print("No hits (out of scope, or below min_score).")
+        return 0
+
+    for hit in hits:
+        terms = ", ".join(hit.matched_terms)
+        print(f"{hit.source_id}  score={hit.score:.1f}  matched_terms=[{terms}]")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Meher Sweets agent management commands.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -60,6 +79,10 @@ def main() -> int:
 
     p_check = subparsers.add_parser("check-llm", help="Verify the LLM endpoint works.")
     p_check.set_defaults(func=cmd_check_llm)
+
+    p_retrieve = subparsers.add_parser("retrieve", help="Debug: show retrieval hits for a message.")
+    p_retrieve.add_argument("message", help="Customer message to test retrieval against.")
+    p_retrieve.set_defaults(func=cmd_retrieve)
 
     args, extra_args = parser.parse_known_args()
     args.extra_args = extra_args

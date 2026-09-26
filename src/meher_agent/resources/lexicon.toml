@@ -1,0 +1,40 @@
+# Retrieval vocabulary for the Meher Sweets assistant.
+#
+# This file is NOT shop data -- it is our own hand-built list of English,
+# Hindi (Devanagari) and Hinglish (Roman-script Hindi) words and phrases
+# used to match a customer message to the relevant product or policy
+# section. It is read by src/meher_agent/retrieval.py.
+
+[products]
+KK-1000 = ["kaju katli", "kaju barfi", "काजू कतली", "काजू बर्फी", "kaju kati", "kaju katri"]
+KK-500 = ["kaju katli", "kaju barfi", "काजू कतली", "काजू बर्फी", "kaju kati", "kaju katri"]
+KKSF-500 = ["sugar free kaju katli", "sugar free", "शुगर फ्री", "शुगर फ्री काजू कतली", "no sugar kaju katli", "sugarfree"]
+ML-1000 = ["motichoor laddoo", "motichur laddu", "laddoo", "laddu", "ladoo", "लड्डू", "मोतीचूर लड्डू"]
+BL-1000 = ["besan laddoo", "besan ladoo", "laddoo", "laddu", "ladoo", "लड्डू", "बेसन लड्डू"]
+SP-500 = ["soan papdi", "son papdi", "sonpapdi", "सोन पापड़ी"]
+GJ-1000 = ["gulab jamun", "gulabjamun", "गुलाब जामुन"]
+RM-500 = ["rasmalai", "ras malai", "रसमलाई"]
+NM-400 = ["mixed namkeen", "namkeen", "नमकीन", "मिक्स नमकीन"]
+AB-400 = ["aloo bhujia", "bhujia", "आलू भुजिया", "भुजिया"]
+SM-1 = ["samosa", "samosas", "samose", "samosay", "समोसा"]
+DH-500 = ["khaman dhokla", "dhokla", "ढोकला", "खमन ढोकला"]
+GBS = ["gift box", "diwali gift box", "small gift box", "gift box small", "डिब्बा", "गिफ्ट बॉक्स", "छोटा डिब्बा", "उपहार बॉक्स"]
+GBL = ["gift box", "diwali gift box", "large gift box", "gift box large", "big gift box", "डिब्बा", "गिफ्ट बॉक्स", "बड़ा डिब्बा", "उपहार बॉक्स"]
+
+[sections]
+"policies.md#prices-and-gst" = ["price", "prices", "gst", "invoice", "gstin", "rate", "cost", "kimat", "keemat", "कीमत", "दाम", "रेट", "जीएसटी", "इनवॉइस"]
+"policies.md#payment" = ["payment", "pay", "upi", "cod", "cash on delivery", "cash", "card", "debit card", "credit card", "bhugtan", "भुगतान", "कैश", "कार्ड", "नकद"]
+"policies.md#delivery" = ["deliver", "delivery", "km", "kilometre", "kilometer", "door", "ghar", "ghar pe", "far", "distance", "kitni door", "डिलीवरी", "किलोमीटर", "दूर", "पहुंचा", "पहुंचाते", "घर"]
+"policies.md#bulk-orders" = ["bulk", "bulk order", "10 kg", "advance", "advance payment", "notice", "bahut saara", "bahut saare", "zyada", "thok", "थोक", "एडवांस", "नोटिस", "ज्यादा मात्रा"]
+"policies.md#diwali-2026-gift-boxes-and-discounts" = ["discount", "offer", "off", "chhut", "chhoot", "छूट", "डिस्काउंट", "diwali", "दिवाली", "50 gift boxes", "5 percent off", "concession"]
+"policies.md#returns-and-damaged-deliveries" = ["return", "returns", "refund", "wapas", "wapis", "वापस", "damaged", "crushed", "tuta", "toota", "broken", "टूटा", "खराब सामान", "replace"]
+"policies.md#ingredients-and-allergens" = ["allergy", "allergic", "nuts", "egg", "anda", "अंडा", "vegetarian", "veg", "shakahari", "शाकाहारी", "cashew", "peanuts", "milk allergy", "allergen"]
+"policies.md#storage" = ["fridge", "store", "storage", "kitne din", "shelf life", "kharab hoga", "rakhein", "फ्रिज", "स्टोर", "कितने दिन", "रखना"]
+"policies.md#wedding-and-custom-orders" = ["wedding", "shaadi", "शादी", "custom order", "custom", "callback", "call back", "wedding order"]
+"policies.md#complaints" = ["complaint", "complaints", "bad", "disappointed", "kharab", "kharab service", "खराब", "शिकायत", "bad service", "poor service", "gussa", "naraz"]
+"business.md#about" = ["about", "history", "since 1998", "family shop", "shop history", "kab se", "kahani", "बारे में"]
+"business.md#address" = ["kahan", "kahan hai", "where", "location", "address", "pata", "पता", "कहां", "shop location", "kaha", "delhi", "rajouri garden"]
+"business.md#opening-hours" = ["open", "close", "opening", "closing", "timing", "timings", "kitne baje", "band", "khula", "khulta", "hours", "समय", "बजे", "बंद", "खुला", "kab khulta hai", "kab band hota hai"]
+"business.md#how-to-order" = ["how to order", "order kaise karein", "order kaise kare", "email order", "shop order", "order karna"]
+"business.md#contact" = ["phone", "number", "mobile", "owner", "malik", "मालिक", "नंबर", "contact", "mobile number", "phone number", "call karo", "sampark"]
+"business.md#languages" = ["language", "languages", "hindi", "english", "hinglish", "bhasha", "भाषा", "kaunsi bhasha"]
