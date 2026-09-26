@@ -23,4 +23,6 @@ ollama pull qwen2.5:7b
 
 Mac/Linux reviewers can use the equivalent `make run`, `make test`, `make eval CASES=...`, `make check-llm`.
 
+Model: qwen2.5:7b via Ollama, chosen using scripts/compare_models.py (results in reports/model_comparison.md).
+
 More to come as the project progresses.
