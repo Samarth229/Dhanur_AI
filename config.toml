@@ -1,0 +1,23 @@
+[paths]
+data_dir = "data"
+evals_dir = "evals"
+reports_dir = "reports"
+
+[llm]
+temperature = 0.1
+max_model_calls = 4
+request_timeout_s = 60
+max_tokens = 512
+
+[reply]
+max_chars = 1200
+
+[server]
+host = "127.0.0.1"
+port = 8000
+
+[eval]
+runs = 3
+inr_per_usd = 100
+usd_per_1m_input_tokens = 0
+usd_per_1m_output_tokens = 0
