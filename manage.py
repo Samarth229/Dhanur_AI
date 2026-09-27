@@ -63,6 +63,51 @@ def cmd_retrieve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_quote(args: argparse.Namespace) -> int:
+    import json
+
+    sys.path.insert(0, str(SRC_DIR))
+    from meher_agent.pricing import PricingError, quote_order
+
+    items = []
+    for spec in args.item:
+        name, amount, unit = spec.rsplit(":", 2)
+        items.append({"item": name, "amount": float(amount), "unit": unit})
+
+    try:
+        quote = quote_order(items, distance_km=args.distance, delivery_date=args.date)
+    except PricingError as exc:
+        print(f"{exc.code}: {exc.message}")
+        return 1
+
+    print(quote.to_tool_text())
+    print()
+    print(
+        json.dumps(
+            {
+                "lines": [vars(line) for line in quote.lines],
+                "subtotal": quote.subtotal,
+                "giftbox_count": quote.giftbox_count,
+                "giftbox_subtotal": quote.giftbox_subtotal,
+                "discount_amount": quote.discount_amount,
+                "goods_total": quote.goods_total,
+                "delivery": vars(quote.delivery),
+                "grand_total": quote.grand_total,
+                "sweets_kg": quote.sweets_kg,
+                "bulk": vars(quote.bulk),
+                "cod_allowed": quote.cod_allowed,
+                "preorder_closed": quote.preorder_closed,
+                "notes": quote.notes,
+                "source_ids": quote.source_ids,
+                "allowed_amounts": quote.allowed_amounts,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Meher Sweets agent management commands.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -83,6 +128,14 @@ def main() -> int:
     p_retrieve = subparsers.add_parser("retrieve", help="Debug: show retrieval hits for a message.")
     p_retrieve.add_argument("message", help="Customer message to test retrieval against.")
     p_retrieve.set_defaults(func=cmd_retrieve)
+
+    p_quote = subparsers.add_parser("quote", help="Debug: price an order.")
+    p_quote.add_argument(
+        "--item", action="append", required=True, help='Item as "name:amount:unit", repeatable.'
+    )
+    p_quote.add_argument("--distance", type=float, default=None, help="Delivery distance in km.")
+    p_quote.add_argument("--date", default=None, help="Delivery date, YYYY-MM-DD.")
+    p_quote.set_defaults(func=cmd_quote)
 
     args, extra_args = parser.parse_known_args()
     args.extra_args = extra_args

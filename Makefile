@@ -1,4 +1,4 @@
-.PHONY: run test eval check-llm retrieve
+.PHONY: run test eval check-llm retrieve quote
 
 run:
 	python manage.py run
@@ -14,3 +14,6 @@ check-llm:
 
 retrieve:
 	python manage.py retrieve "$(MESSAGE)"
+
+quote:
+	python manage.py quote --item "$(ITEM)" --distance "$(DISTANCE)"

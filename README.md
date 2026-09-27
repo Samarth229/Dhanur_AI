@@ -25,4 +25,13 @@ Mac/Linux reviewers can use the equivalent `make run`, `make test`, `make eval C
 
 Model: qwen2.5:7b via Ollama, chosen using scripts/compare_models.py (results in reports/model_comparison.md).
 
+## Assumptions (pricing engine, Part 2)
+
+1. Item resolution uses the longest matching alias across English, Hindi and Hinglish; a name that spans more than one product family (e.g. "laddoo", "gift box") is treated as ambiguous rather than guessed.
+2. A requested amount is only fulfilled by an exact combination of existing pack sizes (cheapest first); amounts that can't be hit exactly (e.g. 750 g of a 1 kg-only product) are rejected rather than rounded.
+3. Delivery distance is optional: if it's not given, no delivery fee or "with delivery" total is computed at all, rather than guessing free vs. charged.
+4. Bulk-order status counts only dry and milk sweets by weight, plus gift boxes by count; namkeen and fresh snacks never count toward the bulk threshold.
+5. All money (discounts, advances) is rounded to the nearest whole rupee with round-half-up, not Python's default banker's rounding.
+6. The gift-box discount is checked before free-delivery eligibility, but this ordering can never change the final total: the discount only starts at 50+ gift boxes (≥ ₹32,500), which is always far above the ₹999 free-delivery threshold either way.
+
 More to come as the project progresses.

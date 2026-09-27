@@ -29,6 +29,21 @@ top_k = 4
 min_score = 1.0
 history_weight = 0.5    # weight of earlier user turns, for follow-ups like "make it 3 kg"
 
+[policy]
+# Mirrors data/policies.md. A test checks these values against the policy text.
+delivery_radius_km = 8
+free_delivery_min_inr = 999
+delivery_fee_inr = 60
+cod_max_inr = 5000
+giftbox_discount_min_boxes = 50
+giftbox_discount_pct = 5
+bulk_sweets_kg_over = 10
+bulk_giftboxes_over = 25
+bulk_notice_days = 3
+bulk_advance_pct = 30
+giftbox_preorder_until = "2026-11-05"
+max_order_units = 1000     # sanity cap for a single line (a guard against absurd input)
+
 [compare]
 runs_per_message = 2
 max_model_calls = 4

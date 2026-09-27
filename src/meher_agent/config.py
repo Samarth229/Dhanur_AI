@@ -64,6 +64,22 @@ class RetrievalConfig:
 
 
 @dataclass(frozen=True)
+class PolicyConfig:
+    delivery_radius_km: float
+    free_delivery_min_inr: float
+    delivery_fee_inr: float
+    cod_max_inr: float
+    giftbox_discount_min_boxes: int
+    giftbox_discount_pct: float
+    bulk_sweets_kg_over: float
+    bulk_giftboxes_over: int
+    bulk_notice_days: int
+    bulk_advance_pct: float
+    giftbox_preorder_until: str
+    max_order_units: int
+
+
+@dataclass(frozen=True)
 class CompareConfig:
     runs_per_message: int
     max_model_calls: int
@@ -81,6 +97,7 @@ class Settings:
     server: ServerConfig
     eval: EvalConfig
     retrieval: RetrievalConfig
+    policy: PolicyConfig
     compare: CompareConfig
     project_root: Path
 
@@ -104,6 +121,7 @@ def load_settings() -> Settings:
     server = ServerConfig(**raw["server"])
     eval_cfg = EvalConfig(**raw["eval"])
     retrieval_cfg = RetrievalConfig(**raw["retrieval"])
+    policy_cfg = PolicyConfig(**raw["policy"])
     compare_cfg = CompareConfig(**raw["compare"])
 
     return Settings(
@@ -113,6 +131,7 @@ def load_settings() -> Settings:
         server=server,
         eval=eval_cfg,
         retrieval=retrieval_cfg,
+        policy=policy_cfg,
         compare=compare_cfg,
         project_root=PROJECT_ROOT,
     )
