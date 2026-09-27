@@ -49,6 +49,21 @@ def mask_text(text: str) -> str:
     return text
 
 
+def find_emails(text: str) -> list[str]:
+    return _EMAIL_FIND_RE.findall(text)
+
+
+def find_phones(text: str) -> list[str]:
+    """Returns the valid (normalized) phone numbers found in free text."""
+    found = []
+    for match in _PHONE_CANDIDATE_RE.finditer(text):
+        try:
+            found.append(normalize_phone(match.group(0)))
+        except ValidationError:
+            continue
+    return found
+
+
 class MaskingFilter(logging.Filter):
     """Logging filter that masks emails and phone numbers in log records."""
 
