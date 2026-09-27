@@ -25,6 +25,9 @@ runs = 3
 inr_per_usd = 100
 usd_per_1m_input_tokens = 0
 usd_per_1m_output_tokens = 0
+base_url = "http://127.0.0.1:8000"
+request_timeout_s = 180
+concurrency = 1
 
 [retrieval]
 mode = "full"           # "full" = all data in the prompt, relevant sections shown first; "topk" = only the top sections

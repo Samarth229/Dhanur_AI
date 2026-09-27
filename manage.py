@@ -45,8 +45,21 @@ def cmd_test(args: argparse.Namespace) -> int:
 
 
 def cmd_eval(args: argparse.Namespace) -> int:
-    print("harness not built yet")
-    return 0
+    import os
+
+    sys.path.insert(0, str(SRC_DIR))
+    sys.path.insert(0, str(PROJECT_ROOT))
+    from meher_agent.config import settings
+    from evals_harness.runner import run_eval
+
+    base_url = args.base_url or os.environ.get("EVAL_BASE_URL") or settings.eval.base_url
+    return run_eval(
+        args.cases,
+        settings,
+        runs=args.runs,
+        base_url=base_url,
+        label=args.label,
+    )
 
 
 def cmd_check_llm(args: argparse.Namespace) -> int:
@@ -155,7 +168,10 @@ def main() -> int:
     p_test.set_defaults(func=cmd_test)
 
     p_eval = subparsers.add_parser("eval", help="Run the eval harness.")
-    p_eval.add_argument("--cases", required=False, help="Path to eval cases file.")
+    p_eval.add_argument("--cases", required=True, help="Path to eval cases file.")
+    p_eval.add_argument("--runs", type=int, default=None, help="Number of runs (default from config).")
+    p_eval.add_argument("--base-url", default=None, help="Service base URL (default from config / EVAL_BASE_URL).")
+    p_eval.add_argument("--label", default=None, help="Label for this eval run.")
     p_eval.set_defaults(func=cmd_eval)
 
     p_check = subparsers.add_parser("check-llm", help="Verify the LLM endpoint works.")

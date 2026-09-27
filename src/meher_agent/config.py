@@ -56,6 +56,9 @@ class EvalConfig:
     inr_per_usd: float
     usd_per_1m_input_tokens: float
     usd_per_1m_output_tokens: float
+    base_url: str
+    request_timeout_s: float
+    concurrency: int
 
 
 @dataclass(frozen=True)
