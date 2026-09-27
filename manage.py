@@ -15,23 +15,28 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 
 def cmd_run(args: argparse.Namespace) -> int:
+    import os
+
     sys.path.insert(0, str(SRC_DIR))
+    os.environ["PYTHONPATH"] = str(SRC_DIR) + os.pathsep + os.environ.get("PYTHONPATH", "")
+
+    import uvicorn
+
     from meher_agent.config import settings
 
-    try:
-        import uvicorn
-        from fastapi import FastAPI
-    except ImportError:
-        print("service not built yet")
-        return 0
+    if args.reload:
+        uvicorn.run(
+            "meher_agent.api:create_app",
+            factory=True,
+            host=settings.server.host,
+            port=settings.server.port,
+            reload=True,
+            app_dir=str(SRC_DIR),
+        )
+    else:
+        from meher_agent.api import create_app
 
-    app = FastAPI(title="Meher Sweets Agent")
-
-    @app.get("/health")
-    def health() -> dict:
-        return {"status": "ok"}
-
-    uvicorn.run(app, host=settings.server.host, port=settings.server.port)
+        uvicorn.run(create_app(), host=settings.server.host, port=settings.server.port)
     return 0
 
 
@@ -143,6 +148,7 @@ def main() -> int:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     p_run = subparsers.add_parser("run", help="Start the service.")
+    p_run.add_argument("--reload", action="store_true", help="Auto-reload on code changes (development).")
     p_run.set_defaults(func=cmd_run)
 
     p_test = subparsers.add_parser("test", help="Run the test suite.")

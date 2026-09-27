@@ -47,6 +47,7 @@ class ReplyConfig:
 class ServerConfig:
     host: str
     port: int
+    warmup_on_start: bool
 
 
 @dataclass(frozen=True)

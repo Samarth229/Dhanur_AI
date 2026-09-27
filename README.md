@@ -34,4 +34,39 @@ Model: qwen2.5:7b via Ollama, chosen using scripts/compare_models.py (results in
 5. All money (discounts, advances) is rounded to the nearest whole rupee with round-half-up, not Python's default banker's rounding.
 6. The gift-box discount is checked before free-delivery eligibility, but this ordering can never change the final total: the discount only starts at 50+ gift boxes (≥ ₹32,500), which is always far above the ₹999 free-delivery threshold either way.
 
+## Run the service
+
+Start the server:
+
+```
+python manage.py run
+```
+
+It listens on `http://127.0.0.1:8000` by default (host/port from `config.toml`). Use `python manage.py run --reload` for auto-reload during development.
+
+**PowerShell:**
+
+```powershell
+Invoke-RestMethod -Uri http://127.0.0.1:8000/chat -Method Post -ContentType "application/json" -Body (@{
+    conversation_id = "demo-1"
+    message = "How much is 500 g of sugar-free kaju katli?"
+} | ConvertTo-Json)
+
+Invoke-RestMethod -Uri http://127.0.0.1:8000/leads -Method Get
+
+Invoke-RestMethod -Uri http://127.0.0.1:8000/health -Method Get
+```
+
+**curl:**
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H "Content-Type: application/json" \
+  -d '{"conversation_id": "demo-1", "message": "How much is 500 g of sugar-free kaju katli?"}'
+
+curl http://127.0.0.1:8000/leads
+
+curl http://127.0.0.1:8000/health
+```
+
 More to come as the project progresses.

@@ -18,6 +18,7 @@ max_chars = 1200
 [server]
 host = "127.0.0.1"
 port = 8000
+warmup_on_start = true
 
 [eval]
 runs = 3
