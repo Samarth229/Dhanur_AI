@@ -44,6 +44,9 @@ bulk_advance_pct = 30
 giftbox_preorder_until = "2026-11-05"
 max_order_units = 1000     # sanity cap for a single line (a guard against absurd input)
 
+[logging]
+level = "INFO"
+
 [compare]
 runs_per_message = 2
 max_model_calls = 4

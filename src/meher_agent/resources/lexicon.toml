@@ -38,3 +38,15 @@ GBL = ["gift box", "diwali gift box", "large gift box", "gift box large", "big g
 "business.md#how-to-order" = ["how to order", "order kaise karein", "order kaise kare", "email order", "shop order", "order karna"]
 "business.md#contact" = ["phone", "number", "mobile", "owner", "malik", "मालिक", "नंबर", "contact", "mobile number", "phone number", "call karo", "sampark"]
 "business.md#languages" = ["language", "languages", "hindi", "english", "hinglish", "bhasha", "भाषा", "kaunsi bhasha"]
+
+[language]
+# Roman-script Hindi (Hinglish) marker words used by src/meher_agent/language.py
+# to detect Hinglish. Product/food names are deliberately excluded so that
+# "How much is kaju katli?" is detected as English.
+hinglish_markers = [
+    "kya", "hai", "hain", "chahiye", "kitna", "kitne", "kitni", "hoga",
+    "milega", "aur", "ke", "liye", "bhaiya", "bhai", "mera", "meri",
+    "mujhe", "aap", "aapka", "nahi", "kab", "kahan", "kaise", "karo",
+    "kar", "dena", "de", "do", "wala", "wali", "tak", "se", "ko", "ka",
+    "ki", "ji", "haan", "theek", "accha", "baje", "din", "abhi",
+]

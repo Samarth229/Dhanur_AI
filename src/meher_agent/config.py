@@ -80,6 +80,11 @@ class PolicyConfig:
 
 
 @dataclass(frozen=True)
+class LoggingConfig:
+    level: str
+
+
+@dataclass(frozen=True)
 class CompareConfig:
     runs_per_message: int
     max_model_calls: int
@@ -98,6 +103,7 @@ class Settings:
     eval: EvalConfig
     retrieval: RetrievalConfig
     policy: PolicyConfig
+    logging: LoggingConfig
     compare: CompareConfig
     project_root: Path
 
@@ -122,6 +128,7 @@ def load_settings() -> Settings:
     eval_cfg = EvalConfig(**raw["eval"])
     retrieval_cfg = RetrievalConfig(**raw["retrieval"])
     policy_cfg = PolicyConfig(**raw["policy"])
+    logging_cfg = LoggingConfig(**raw["logging"])
     compare_cfg = CompareConfig(**raw["compare"])
 
     return Settings(
@@ -132,6 +139,7 @@ def load_settings() -> Settings:
         eval=eval_cfg,
         retrieval=retrieval_cfg,
         policy=policy_cfg,
+        logging=logging_cfg,
         compare=compare_cfg,
         project_root=PROJECT_ROOT,
     )
