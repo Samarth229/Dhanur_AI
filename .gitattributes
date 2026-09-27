@@ -1,0 +1,6 @@
+# These files must be byte-for-byte identical everywhere (tests check
+# SHA-256 hashes and exact prefix bytes) -- never let git's autocrlf
+# rewrite their line endings on checkin or checkout.
+data/*.csv -text
+data/*.md -text
+evals/*.jsonl -text
