@@ -108,6 +108,36 @@ def cmd_quote(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_chat(args: argparse.Namespace) -> int:
+    import uuid
+
+    sys.path.insert(0, str(SRC_DIR))
+    from meher_agent.agent import Agent
+    from meher_agent.llm import LLMClient
+
+    conversation_id = args.conversation_id or str(uuid.uuid4())
+    print(f"Conversation id: {conversation_id}")
+    print("Type your message and press Enter. Ctrl+C to quit.\n")
+
+    agent = Agent(llm=LLMClient())
+    while True:
+        try:
+            message = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+        if not message:
+            continue
+
+        result = agent.handle(conversation_id, message)
+        print(f"Bot: {result.reply}")
+        print(f"  sources: {result.sources}")
+        print(f"  actions: {result.actions}")
+        print(f"  handoff: {result.handoff}")
+        print(f"  model_calls: {result.usage['model_calls']}  latency_ms: {result.latency_ms:.0f}")
+        print()
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Meher Sweets agent management commands.")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -136,6 +166,10 @@ def main() -> int:
     p_quote.add_argument("--distance", type=float, default=None, help="Delivery distance in km.")
     p_quote.add_argument("--date", default=None, help="Delivery date, YYYY-MM-DD.")
     p_quote.set_defaults(func=cmd_quote)
+
+    p_chat = subparsers.add_parser("chat", help="Interactive terminal chat with the agent.")
+    p_chat.add_argument("--conversation-id", default=None, help="Reuse a specific conversation id.")
+    p_chat.set_defaults(func=cmd_chat)
 
     args, extra_args = parser.parse_known_args()
     args.extra_args = extra_args
