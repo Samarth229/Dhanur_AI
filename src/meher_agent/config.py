@@ -26,6 +26,8 @@ class PathsConfig:
     evals_dir: Path
     reports_dir: Path
     lexicon: Path
+    system_prompt: Path
+    templates: Path
 
 
 @dataclass(frozen=True)
@@ -85,6 +87,14 @@ class LoggingConfig:
 
 
 @dataclass(frozen=True)
+class AgentConfig:
+    history_messages: int
+    max_sources: int
+    allowed_percentages: tuple[float, ...]
+    today_override: str
+
+
+@dataclass(frozen=True)
 class CompareConfig:
     runs_per_message: int
     max_model_calls: int
@@ -104,6 +114,7 @@ class Settings:
     retrieval: RetrievalConfig
     policy: PolicyConfig
     logging: LoggingConfig
+    agent: AgentConfig
     compare: CompareConfig
     project_root: Path
 
@@ -121,6 +132,8 @@ def load_settings() -> Settings:
         evals_dir=(PROJECT_ROOT / raw["paths"]["evals_dir"]).resolve(),
         reports_dir=(PROJECT_ROOT / raw["paths"]["reports_dir"]).resolve(),
         lexicon=(PROJECT_ROOT / raw["paths"]["lexicon"]).resolve(),
+        system_prompt=(PROJECT_ROOT / raw["paths"]["system_prompt"]).resolve(),
+        templates=(PROJECT_ROOT / raw["paths"]["templates"]).resolve(),
     )
     llm = LLMConfig(**raw["llm"])
     reply = ReplyConfig(**raw["reply"])
@@ -129,6 +142,9 @@ def load_settings() -> Settings:
     retrieval_cfg = RetrievalConfig(**raw["retrieval"])
     policy_cfg = PolicyConfig(**raw["policy"])
     logging_cfg = LoggingConfig(**raw["logging"])
+    agent_raw = dict(raw["agent"])
+    agent_raw["allowed_percentages"] = tuple(agent_raw["allowed_percentages"])
+    agent_cfg = AgentConfig(**agent_raw)
     compare_cfg = CompareConfig(**raw["compare"])
 
     return Settings(
@@ -140,6 +156,7 @@ def load_settings() -> Settings:
         retrieval=retrieval_cfg,
         policy=policy_cfg,
         logging=logging_cfg,
+        agent=agent_cfg,
         compare=compare_cfg,
         project_root=PROJECT_ROOT,
     )

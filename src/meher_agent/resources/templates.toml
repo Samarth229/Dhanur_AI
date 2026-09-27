@@ -1,0 +1,37 @@
+# Fixed reply templates in English, Hindi and Hinglish. These are the only
+# text the agent ever shows the customer without going through the model.
+
+[disclosure]
+en = "Hi! I'm the AI assistant for Meher Sweets."
+hi = "नमस्ते! मैं Meher Sweets का AI सहायक हूँ।"
+hinglish = "Namaste! Main Meher Sweets ka AI assistant hoon."
+
+[handoff]
+en = "Our team will reply by email within one working day."
+hi = "हमारी टीम एक कार्य दिवस के भीतर ईमेल से जवाब देगी।"
+hinglish = "Hamari team ek working day ke andar email se reply karegi."
+
+[step_limit]
+en = "Sorry, I'm passing you to our team, who will reply by email."
+hi = "क्षमा करें, मैं आपको हमारी टीम को भेज रहा हूँ, जो ईमेल से जवाब देगी।"
+hinglish = "Sorry, main aapko humari team ko bhej raha hoon, jo email se reply karegi."
+
+[llm_down]
+en = "Sorry, we're having a temporary problem. Our team will reply by email."
+hi = "क्षमा करें, फिलहाल एक तकनीकी समस्या है। हमारी टीम ईमेल से जवाब देगी।"
+hinglish = "Sorry, abhi ek temporary problem hai. Humari team email se reply karegi."
+
+[refusal]
+en = "I'm sorry, I can't do that. The only discount we offer is 5% off the gift-box total on orders of 50 or more gift boxes."
+hi = "क्षमा करें, मैं ऐसा नहीं कर सकता। हम केवल 50 या उससे अधिक गिफ्ट बॉक्स के ऑर्डर पर गिफ्ट-बॉक्स कुल राशि पर 5% की छूट देते हैं।"
+hinglish = "Sorry, main aisa nahi kar sakta. Sirf ek hi discount hai: 50 ya usse zyada gift box ke order par gift-box total par 5% off."
+
+[quote_fallback]
+en = "{lines}\nTOTAL {total}"
+hi = "{lines}\nकुल {total}"
+hinglish = "{lines}\nTOTAL {total}"
+
+[generic_fallback]
+en = "Sorry, I couldn't complete that. Our team will reply by email if you share your question again."
+hi = "क्षमा करें, मैं यह पूरा नहीं कर सका। कृपया अपना सवाल फिर से बताएं, हमारी टीम ईमेल से जवाब देगी।"
+hinglish = "Sorry, main yeh complete nahi kar saka. Apna sawaal dobara bataiye, humari team email se reply karegi."

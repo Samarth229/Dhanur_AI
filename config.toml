@@ -3,6 +3,8 @@ data_dir = "data"
 evals_dir = "evals"
 reports_dir = "reports"
 lexicon = "src/meher_agent/resources/lexicon.toml"
+system_prompt = "src/meher_agent/resources/system_prompt.md"
+templates = "src/meher_agent/resources/templates.toml"
 
 [llm]
 temperature = 0.1
@@ -46,6 +48,12 @@ max_order_units = 1000     # sanity cap for a single line (a guard against absur
 
 [logging]
 level = "INFO"
+
+[agent]
+history_messages = 10
+max_sources = 6
+allowed_percentages = [5, 30]
+today_override = ""        # "YYYY-MM-DD" for reproducible eval runs; empty = the real date
 
 [compare]
 runs_per_message = 2
