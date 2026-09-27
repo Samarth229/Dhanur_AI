@@ -81,6 +81,13 @@ def cmd_retrieve(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_cases(args: argparse.Namespace) -> int:
+    script_args = ["--check"] if args.check else []
+    return subprocess.call(
+        [sys.executable, str(PROJECT_ROOT / "scripts" / "compute_expected.py"), *script_args]
+    )
+
+
 def cmd_quote(args: argparse.Namespace) -> int:
     import json
 
@@ -180,6 +187,10 @@ def main() -> int:
     p_retrieve = subparsers.add_parser("retrieve", help="Debug: show retrieval hits for a message.")
     p_retrieve.add_argument("message", help="Customer message to test retrieval against.")
     p_retrieve.set_defaults(func=cmd_retrieve)
+
+    p_cases = subparsers.add_parser("cases", help="Build evals/cases.jsonl with computed totals.")
+    p_cases.add_argument("--check", action="store_true", help="Exit non-zero if cases.jsonl is out of date.")
+    p_cases.set_defaults(func=cmd_cases)
 
     p_quote = subparsers.add_parser("quote", help="Debug: price an order.")
     p_quote.add_argument(

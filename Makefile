@@ -1,4 +1,4 @@
-.PHONY: run test eval check-llm retrieve quote chat
+.PHONY: run test eval check-llm retrieve quote chat cases
 
 run:
 	python manage.py run
@@ -20,3 +20,6 @@ quote:
 
 chat:
 	python manage.py chat
+
+cases:
+	python manage.py cases
