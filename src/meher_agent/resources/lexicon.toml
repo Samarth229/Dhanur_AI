@@ -47,6 +47,15 @@ hinglish_markers = [
     "kya", "hai", "hain", "chahiye", "kitna", "kitne", "kitni", "hoga",
     "milega", "aur", "ke", "liye", "bhaiya", "bhai", "mera", "meri",
     "mujhe", "aap", "aapka", "nahi", "kab", "kahan", "kaise", "karo",
-    "kar", "dena", "de", "do", "wala", "wali", "tak", "se", "ko", "ka",
+    "kar", "dena", "wala", "wali", "tak", "se", "ko", "ka",
     "ki", "ji", "haan", "theek", "accha", "baje", "din", "abhi",
+]
+
+# Common English function words. A message with exactly one Hinglish marker
+# only counts as Hinglish if it contains none of these -- otherwise a
+# clearly-English sentence with one incidental marker-like word (e.g. "How
+# much is kaju katli, bhaiya?") would be misclassified.
+english_function_words = [
+    "is", "are", "the", "you", "do", "does", "have", "has", "what", "how",
+    "can", "i", "my", "your", "please", "want", "need", "much", "price",
 ]
