@@ -429,3 +429,51 @@ def test_discount_safety_net_silent_for_legitimate_discount():
     )
     result = agent.handle("c1", "50 small gift box, total after discount?")
     assert result.reply.count("can't") == 0
+
+
+# ---------------------------------------------------------------------------
+# Fix 13: lead-04 -- reply must ask for a valid contact after a failed save_lead
+# ---------------------------------------------------------------------------
+
+
+def test_invalid_contact_safety_net_appends_request_when_missing():
+    agent = make_agent(
+        [
+            tool_response(
+                "save_lead", {"name": "Rohit Sharma", "need": "wedding order for 200 guests", "phone": "12345"}
+            ),
+            text_response("Sorry about that, could you share your name and number again?"),
+        ]
+    )
+    result = agent.handle(
+        "c1", "Wedding order for 200 guests on 5 December. My name is Rohit Sharma, phone 12345."
+    )
+    assert "10-digit" in result.reply.lower() or "valid" in result.reply.lower()
+
+
+def test_invalid_contact_safety_net_silent_when_already_mentioned():
+    agent = make_agent(
+        [
+            tool_response(
+                "save_lead", {"name": "Rohit Sharma", "need": "wedding order for 200 guests", "phone": "12345"}
+            ),
+            text_response("Please share a valid 10-digit mobile number so we can proceed."),
+        ]
+    )
+    result = agent.handle(
+        "c1", "Wedding order for 200 guests on 5 December. My name is Rohit Sharma, phone 12345."
+    )
+    assert result.reply.lower().count("10-digit") == 1
+
+
+def test_invalid_contact_safety_net_silent_on_success():
+    agent = make_agent(
+        [
+            tool_response(
+                "save_lead", {"name": "Amit", "need": "wedding order", "email": "amit@example.com"}
+            ),
+            text_response("Lead saved, the team will follow up by email."),
+        ]
+    )
+    result = agent.handle("c1", "Wedding order, I'm Amit, amit@example.com")
+    assert "10-digit" not in result.reply.lower()

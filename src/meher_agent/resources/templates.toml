@@ -31,6 +31,11 @@ en = "{lines}\nTOTAL {total}"
 hi = "{lines}\nकुल {total}"
 hinglish = "{lines}\nTOTAL {total}"
 
+[lead_contact_invalid]
+en = "Please share a valid 10-digit mobile number or an email address so our team can reach you."
+hi = "कृपया एक सही 10 अंकों का मोबाइल नंबर या ईमेल पता साझा करें ताकि हमारी टीम आपसे संपर्क कर सके।"
+hinglish = "Kripya ek valid 10-digit mobile number ya email address share kijiye taaki humari team aapse contact kar sake."
+
 [photo_request]
 en = "Please share a photo of the issue; damage needs to be reported within 2 hours of delivery."
 hi = "कृपया समस्या की फोटो भेजें; डैमेज की शिकायत डिलीवरी के 2 घंटे के भीतर करनी होती है।"

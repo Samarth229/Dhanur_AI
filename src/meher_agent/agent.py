@@ -55,6 +55,13 @@ def _mentions_photo(text: str) -> bool:
     return "photo" in lowered or "फोटो" in text or "फ़ोटो" in text or "तस्वीर" in text
 
 
+def _mentions_valid_contact_request(text: str) -> bool:
+    lowered = text.lower()
+    return any(
+        phrase in lowered for phrase in ("valid", "10-digit", "10 digit", "correct number", "email")
+    )
+
+
 def _mentions_refusal(text: str) -> bool:
     lowered = text.lower()
     return (
@@ -229,6 +236,7 @@ class Agent:
         final_reply_text: str | None = None
         max_calls = self.settings.llm.max_model_calls
         calculate_order_called_this_turn = False
+        save_lead_failed_this_turn = False
 
         try:
             while model_calls < max_calls:
@@ -270,6 +278,8 @@ class Agent:
                             if result.ok and result.data is not None:
                                 quote_for_fallback = result.data
                                 state.allowed_amounts |= set(result.data.allowed_amounts)
+                        if result.name == "save_lead":
+                            save_lead_failed_this_turn = not result.ok
                     continue
 
                 text = resp.content or ""
@@ -360,6 +370,15 @@ class Agent:
             discount_legit = quote_for_fallback is not None and quote_for_fallback.discount_amount > 0
             if not discount_legit and not _mentions_refusal(final_reply_text):
                 final_reply_text = final_reply_text + " " + get_template("refusal", language, self.settings)
+
+        # Fix 13: save_lead was attempted and failed validation this turn,
+        # and nothing was saved -- make sure the reply actually asks for a
+        # usable contact instead of silently moving on.
+        if save_lead_failed_this_turn and not any(a["type"] == "save_lead" for a in actions):
+            if not _mentions_valid_contact_request(final_reply_text):
+                final_reply_text = final_reply_text + " " + get_template(
+                    "lead_contact_invalid", language, self.settings
+                )
 
         if any(a["type"] == "escalate" for a in actions):
             handoff = True
