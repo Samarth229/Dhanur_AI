@@ -31,6 +31,11 @@ en = "{lines}\nTOTAL {total}"
 hi = "{lines}\nकुल {total}"
 hinglish = "{lines}\nTOTAL {total}"
 
+[photo_request]
+en = "Please share a photo of the issue; damage needs to be reported within 2 hours of delivery."
+hi = "कृपया समस्या की फोटो भेजें; डैमेज की शिकायत डिलीवरी के 2 घंटे के भीतर करनी होती है।"
+hinglish = "Kripya issue ki photo bhejiye; damage 2 hours ke andar report karna zaroori hai."
+
 [generic_fallback]
 en = "Sorry, I couldn't complete that. Our team will reply by email if you share your question again."
 hi = "क्षमा करें, मैं यह पूरा नहीं कर सका। कृपया अपना सवाल फिर से बताएं, हमारी टीम ईमेल से जवाब देगी।"

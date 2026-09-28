@@ -59,3 +59,26 @@ english_function_words = [
     "is", "are", "the", "you", "do", "does", "have", "has", "what", "how",
     "can", "i", "my", "your", "please", "want", "need", "much", "price",
 ]
+
+[intents]
+# Data-driven intent word lists (English/Hindi/Hinglish), used by
+# src/meher_agent/intents.py to detect customer intent deterministically,
+# independent of whether the model itself recognises it. Deliberately
+# avoids bare generic words like "bad" (would false-positive on "is X bad
+# for diabetics?") -- multi-word phrases like "bad quality" are used instead.
+complaint = [
+    "damaged", "crushed", "broken", "sour", "stale", "bad quality",
+    "complaint", "disappointed", "refund", "टूटा", "टूटी", "खराब",
+    "शिकायत", "बासी", "kharab", "tuta", "tuti", "shikayat", "kharab quality",
+]
+damage = [
+    "damaged", "crushed", "broken", "टूटा", "टूटी", "tuta", "tuti", "tuta hua",
+]
+human_request = [
+    "real person", "a human", "talk to someone", "speak to someone",
+    "manager", "insaan", "इंसान", "customer care", "connect me to",
+]
+total = [
+    "total", "kitna", "kitne ka", "kitne ki", "कुल", "कितना", "कितने का",
+    "how much in total", "padega", "grand total", "total kitna",
+]

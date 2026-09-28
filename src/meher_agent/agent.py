@@ -10,6 +10,7 @@ from typing import Any
 from meher_agent.config import Settings, settings as default_settings
 from meher_agent.conversations import ConversationStore
 from meher_agent.guards import base_allowed_amounts, build_sources, check_reply
+from meher_agent.intents import detect_intents
 from meher_agent.knowledge import KnowledgeBase, load_knowledge_base
 from meher_agent.llm import LLMClientProtocol, LLMUnavailable
 from meher_agent.prompts import build_system_prompt, get_template, language_instruction
@@ -42,6 +43,11 @@ def _resolve_today(settings: Settings) -> date:
 def _mentions_team_or_email(text: str) -> bool:
     lowered = text.lower()
     return "team" in lowered or "email" in lowered or "@" in text
+
+
+def _mentions_photo(text: str) -> bool:
+    lowered = text.lower()
+    return "photo" in lowered or "फोटो" in text or "फ़ोटो" in text or "तस्वीर" in text
 
 
 def _build_correction_message(problems: list[str], allowed_amounts: set[float], settings: Settings) -> str:
@@ -227,6 +233,23 @@ class Agent:
                 actions.append(result.action)
             handoff = True
             final_reply_text = get_template("step_limit", language, self.settings)
+
+        # Code-level safety net: if the customer's message this turn clearly
+        # signals a complaint or a request for a human, but the model didn't
+        # call escalate, call it ourselves rather than relying on the model
+        # to remember every time.
+        customer_intents = detect_intents(message, self.settings)
+        already_escalated_this_turn = any(a["type"] == "escalate" for a in actions)
+        if ({"complaint", "human_request"} & customer_intents) and not already_escalated_this_turn:
+            reason_kind = "complaint" if "complaint" in customer_intents else "human handoff request"
+            result = execute_tool("escalate", {"reason": f"{reason_kind}: {message[:150]}"}, ctx)
+            if result.action:
+                actions.append(result.action)
+            handoff = True
+            if not _mentions_team_or_email(final_reply_text):
+                final_reply_text = final_reply_text + " " + get_template("handoff", language, self.settings)
+            if "damage" in customer_intents and not _mentions_photo(final_reply_text):
+                final_reply_text = final_reply_text + " " + get_template("photo_request", language, self.settings)
 
         if any(a["type"] == "escalate" for a in actions):
             handoff = True

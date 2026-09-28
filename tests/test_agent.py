@@ -248,3 +248,51 @@ def test_allowed_amounts_persist_across_turns():
 
     r2 = agent.handle("c1", "can you confirm the total again?")
     assert "3,850" in r2.reply
+
+
+# ---------------------------------------------------------------------------
+# Fix 1: complaint/handoff intent safety net
+# ---------------------------------------------------------------------------
+
+
+def test_complaint_intent_auto_escalates_when_model_forgets():
+    agent = make_agent(
+        [text_response("I'm sorry to hear that. Could you tell me more about the issue?")]
+    )
+    result = agent.handle("c1", "The gift box arrived completely crushed. Very disappointed.")
+    assert any(a["type"] == "escalate" for a in result.actions)
+    assert result.handoff is True
+    assert "photo" in result.reply.lower()
+
+
+def test_human_request_intent_auto_escalates_when_model_forgets():
+    agent = make_agent([text_response("Sure, I'll pass this along.")])
+    result = agent.handle("c1", "Please connect me to a real person, I don't want to talk to a bot.")
+    assert any(a["type"] == "escalate" for a in result.actions)
+    assert result.handoff is True
+
+
+def test_complaint_intent_does_not_double_escalate_when_model_already_did():
+    agent = make_agent(
+        [
+            tool_response("escalate", {"reason": "damaged delivery"}),
+            text_response("I'm sorry, the team will follow up by email. Please share a photo."),
+        ]
+    )
+    result = agent.handle("c1", "The box arrived crushed and damaged.")
+    escalate_actions = [a for a in result.actions if a["type"] == "escalate"]
+    assert len(escalate_actions) == 1
+
+
+def test_no_auto_escalate_for_plain_product_question():
+    agent = make_agent([text_response("Kaju Katli is Rs 620 for 500 g.")])
+    result = agent.handle("c1", "How much is 500 g of kaju katli?")
+    assert result.actions == []
+    assert result.handoff is False
+
+
+def test_no_auto_escalate_for_false_positive_bad_question():
+    agent = make_agent([text_response("Kaju Katli is a sweet made with sugar, best enjoyed in moderation.")])
+    result = agent.handle("c1", "Is kaju katli bad for diabetics?")
+    assert result.actions == []
+    assert result.handoff is False
