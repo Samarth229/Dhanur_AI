@@ -6,6 +6,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from datetime import date
+from functools import lru_cache
 from typing import Any
 
 from meher_agent.amounts import extract_rupee_amounts_spec
@@ -17,7 +18,7 @@ from meher_agent.knowledge import KnowledgeBase, load_knowledge_base
 from meher_agent.llm import LLMClientProtocol, LLMUnavailable
 from meher_agent.privacy import find_emails, find_phones
 from meher_agent.prompts import build_system_prompt, get_template, language_instruction
-from meher_agent.retrieval import load_lexicon, retrieve
+from meher_agent.retrieval import load_lexicon, normalize as normalize_for_matching, retrieve
 from meher_agent.stores import EscalationStore, LeadStore
 from meher_agent.tools import TOOLS, ToolContext, execute_tool
 from meher_agent.validation import ValidationError, normalize_email
@@ -68,8 +69,40 @@ def _has_valid_contact(message: str) -> bool:
     return False
 
 
-def _mentions_quantity(message: str) -> bool:
-    return bool(re.search(r"\d", message))
+_UNIT_WORD_RE = re.compile(
+    r"\d+(?:\.\d+)?\s*(?:kg|g|gram|gm|kilo|kilogram|piece|pieces|pcs|pc|box|boxes|"
+    r"pack|packs|packet|packets|पैक|किलो|ग्राम|नग|बॉक्स|डिब्बा)\b",
+    re.IGNORECASE,
+)
+
+
+@lru_cache(maxsize=None)
+def _product_alias_words(settings_obj: Settings) -> frozenset[str]:
+    lexicon = load_lexicon(settings_obj)
+    words: set[str] = set()
+    for aliases in lexicon.get("products", {}).values():
+        for alias in aliases:
+            words.update(alias.split(" "))
+    return frozenset(w for w in words if w)
+
+
+def _mentions_quantity(message: str, settings_obj: Settings) -> bool:
+    """Fix 10: a quantity must be attached to a product or a unit word
+    ("2 kg", "10 samose", "3 packs"), not just any bare number ("7000")."""
+    if _UNIT_WORD_RE.search(message):
+        return True
+    normalized = normalize_for_matching(message)
+    tokens = normalized.split(" ")
+    product_words = _product_alias_words(settings_obj)
+    for i, tok in enumerate(tokens):
+        cleaned = tok.replace(".", "", 1)
+        if not cleaned.isdigit():
+            continue
+        if i + 1 < len(tokens) and tokens[i + 1] in product_words:
+            return True
+        if i > 0 and tokens[i - 1] in product_words:
+            return True
+    return False
 
 
 def _build_correction_message(problems: list[str], allowed_amounts: set[float], settings: Settings) -> str:
@@ -255,7 +288,7 @@ class Agent:
                 turn_intents = detect_intents(message, self.settings)
                 calc_nudge = (
                     "total" in turn_intents
-                    and _mentions_quantity(message)
+                    and _mentions_quantity(message, self.settings)
                     and not calculate_order_called_this_turn
                     and bool(extract_rupee_amounts_spec(text))
                 )

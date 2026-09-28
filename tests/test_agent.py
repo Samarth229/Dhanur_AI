@@ -358,3 +358,31 @@ def test_no_calc_nudge_for_single_price_lookup():
     agent = make_agent([text_response("Kaju Katli is Rs 620 for 500 g.")])
     result = agent.handle("c1", "How much is kaju katli?")
     assert result.usage["model_calls"] == 1
+
+
+# ---------------------------------------------------------------------------
+# Fix 10: calc_nudge needs a quantity attached to a product/unit, not a bare number
+# ---------------------------------------------------------------------------
+
+
+def test_no_calc_nudge_for_bare_number():
+    # The hinglish-04 scenario: "7000" is a rupee amount reference, not a
+    # product quantity -- must not force a calculate_order call.
+    agent = make_agent(
+        [text_response("Cash on delivery only for orders up to Rs 5,000. Use UPI or card instead.")]
+    )
+    result = agent.handle("c1", "7000 ke order pe cash on delivery milega kya?")
+    assert result.usage["model_calls"] == 1
+
+
+def test_calc_nudge_still_fires_for_quantity_with_unit():
+    agent = make_agent(
+        [
+            text_response("10 samose ka total Rs 250 hoga."),
+            tool_response("calculate_order", {"items": [{"item": "samosa", "amount": 10, "unit": "piece"}]}),
+            text_response("10 samose ka total Rs 200 hai."),
+        ]
+    )
+    result = agent.handle("c1", "10 samose ka total kitna hoga?")
+    assert "200" in result.reply
+    assert result.usage["model_calls"] == 3
