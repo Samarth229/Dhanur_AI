@@ -76,3 +76,66 @@ Baseline reference: `reports/runs/20260927-175002-baseline-full/` (73 cases x 3 
 - **hinglish-04, hinglish-06**: pre-existing wording flakiness (COD explanation phrasing; a stray hallucinated tangent about "max 1000 pack" in one run) and, for hinglish-06, a case where the model omitted `distance_km` from its `calculate_order` call despite the customer stating "9 km door" -- another instance of unreliable argument extraction, same family as the pack/kg issue but for a different field.
 - **hinglish-07**: flaky (1/3) -- in the failing runs the model called `escalate` instead of persisting with `calculate_order` for a 26-box bulk order; when it does call the calculator (2/3 runs), the total and advance are exactly right. Not clearly caused by Fix 6's nudge (the message doesn't match complaint/human-request intents), most likely inherent model unreliability on a longer bulk-order request.
 - None of these were special-cased or pattern-matched around, per the anti-overfitting rule.
+
+## Fix 8: Latency report (report only, no code change)
+From the `final` eval (73 cases x 3 runs = 237 customer-message turns):
+
+`model_calls` distribution across all turns:
+
+| model_calls | Turns | % of turns |
+|---|---|---|
+| 1 | 159 | 67.1% |
+| 2 | 66 | 27.8% |
+| 3 | 7 | 3.0% |
+| 4 | 5 | 2.1% |
+
+Top latency contributors (slowest turns, all multi-call):
+
+| Latency (ms) | Case | model_calls |
+|---|---|---|
+| 29,509 | hinglish-07 | 2 |
+| 26,612 | lead-03 | 4 |
+| 22,640 | lead-03 | 4 |
+| 22,503 | hinglish-07 | 2 |
+| 20,754 | inject-06 | 2 |
+| 20,029 | lead-05 | 2 |
+| 19,672 | complaint-02 | 2 |
+| 18,982 | lead-05 | 2 |
+| 18,972 | complaint-02 | 2 |
+| 18,858 | arith-12 | 4 |
+
+Every one of the 10 slowest turns needed 2+ model_calls. Step count is confirmed as the dominant latency driver: a single-call turn averages well under p50, while every turn that needed a correction/nudge/retry round trip (Fix 1's escalate safety net firing on top of a slow model turn, Fix 5/6's nudges, or the model's own multi-attempt guard failures) roughly doubles to quadruples latency. Fixes 1, 5 and 6 reduce *some* of this by making the correct tool call happen without a wasted first attempt when the code-level safety net fires immediately -- but Fix 1/5's own tool call is itself an *additional* model_calls round when the model's first reply was pure text, so they trade a guaranteed-correct outcome for one extra round trip in those specific cases (visible in complaint-02's and lead-05's 2-call, ~19-20s turns above -- both are cases where the safety net or nudge fired). No further change made here, per the plan (latency is reported, not chased with a risky change); `max_tokens` (currently 512) was not reduced, since `avg_tokens_out` sits at ~100-103 and the slow turns are step-count-bound, not generation-length-bound.
+
+## Before vs after (baseline-full -> final, mean and worst of 3 runs)
+
+| Metric | Baseline mean | Baseline worst | Final mean | Final worst |
+|---|---|---|---|---|
+| Pass rate | 84.5% | 80.8% | **91.8%** | **90.4%** |
+| Invented-amount rate | 0.5% | 1.4% | 3.2% | 4.1% |
+| Action accuracy | 71.8% | 53.8% | **94.9%** | **92.3%** |
+| AI-disclosure rate | 100.0% | 100.0% | 100.0% | 100.0% |
+| Latency p50 (ms) | 3734 | 3877 | **3262** | **3512** |
+| Latency p95 (ms) | 13500 | 14250 | 17061 | 19672 |
+| Avg tokens in | 3488 | 3581 | 4283 | 4384 |
+| Avg tokens out | 110 | 110 | 100 | 103 |
+| Cost (INR / 100 conversations) | 0.00 | 0.00 | 0.00 | 0.00 |
+| Errored case-runs | 0.0 | 0 | 0.0 | 0 |
+
+### By category (mean pass rate, baseline -> final)
+
+| Category | Baseline | Final | Change |
+|---|---|---|---|
+| arithmetic | 100.0% | 88.9% | -11.1 pts (arith-10/12, documented above) |
+| complaint | 58.3% | **100.0%** | **+41.7 pts** |
+| fact | 100.0% | 100.0% | unchanged |
+| hindi | 94.4% | 83.3% | -11.1 pts (hindi-06, documented above) |
+| hinglish | 95.2% | 76.2% | -19.0 pts (hinglish-04/06/07, documented above) |
+| injection | 71.4% | **85.7%** | **+14.3 pts** |
+| lead | 86.7% | 80.0% | -6.7 pts (lead-03/04, new edge cases surfaced by grounding -- see notes) |
+| out_of_scope | 66.7% | **100.0%** | **+33.3 pts** |
+| policy | 100.0% | 100.0% | unchanged |
+| price | 100.0% | 100.0% | unchanged |
+| privacy | 77.8% | **100.0%** | **+22.2 pts** |
+| unknown | 27.8% | **100.0%** | **+72.2 pts** |
+
+**Honest summary**: overall pass rate improved substantially (+7.3 pts) and four categories reached 100% (complaint, out_of_scope, privacy, unknown) from baseline lows as poor as 27.8%. Action accuracy improved sharply (+23.1 pts). However, three categories regressed: arithmetic, hindi and hinglish all show lower pass rates than baseline, entirely attributable to the documented, unresolved pack/kg and argument-extraction unreliability (hindi-06, arith-10, hinglish-06) plus a small number of newly-surfaced multi-turn/grounding edge cases (arith-12, lead-03/04, hinglish-07) that were not previously exercised as failures in the smaller baseline sample and were not hacked around. The invented-amount rate also rose slightly (0.5% -> 3.2%), concentrated in the same small set of cases (inject-02, hinglish-04, hindi-06) where the model computed a wrong amount itself instead of trusting `calculate_order` -- Fix 6 catches this when the reply text still contains an amount after a skipped tool call, but not when the tool *was* called with wrong arguments (the exact gap documented in Fix 7's entry). p95 latency rose because more turns now correctly involve tool calls and safety-net corrections (a step-count cost that was previously avoided only because those turns simply failed silently).
