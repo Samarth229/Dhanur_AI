@@ -1,0 +1,233 @@
+{
+  "meta": {
+    "date": "2026-09-28T16:36:40.271715+00:00",
+    "model": "qwen2.5:7b",
+    "base_url": "http://127.0.0.1:8000",
+    "cases_file": "evals/cases.jsonl",
+    "case_count": 1,
+    "runs": 3,
+    "label": "debug-arith01",
+    "config": {
+      "history_messages": 10,
+      "max_sources": 6,
+      "allowed_percentages": [
+        5,
+        30
+      ],
+      "max_model_calls": 4,
+      "reply_max_chars": 1200
+    }
+  },
+  "runs": [
+    [
+      {
+        "case_id": "arith-01",
+        "category": "arithmetic",
+        "error": false,
+        "error_reason": null,
+        "passed": false,
+        "turns": [
+          {
+            "request": {
+              "conversation_id": "eval-20260928163619-arith-01-r1",
+              "message": "I want 2 kg kaju katli and one large Diwali gift box, delivered 5 km from your shop. What is the total including delivery?"
+            },
+            "response": {
+              "reply": "Hi! I'm the AI assistant for Meher Sweets. It seems there was a bit of confusion. Could you please specify whether you want the Diwali Gift Box Large (1 kg assorted sweets and 200 g dry fruits) or the Diwali Gift Box Small (500 g assorted sweets)? This will help me calculate the total for you accurately.",
+              "sources": [
+                "prices.csv#GBL",
+                "policies.md#delivery",
+                "prices.csv#GBS",
+                "policies.md#diwali-2026-gift-boxes-and-discounts"
+              ],
+              "actions": [],
+              "handoff": false,
+              "usage": {
+                "prompt_tokens": 6419,
+                "completion_tokens": 151,
+                "model_calls": 2,
+                "estimated": false,
+                "latency_ms": 7202.149499999905
+              }
+            },
+            "status_code": 200,
+            "latency_ms": 7203.756999999769,
+            "error": null
+          }
+        ],
+        "checks": [
+          {
+            "name": "must_include",
+            "passed": false,
+            "details": "missing: ['3850']"
+          },
+          {
+            "name": "must_include_any",
+            "passed": false,
+            "details": "none of ['free'] found"
+          },
+          {
+            "name": "G1_ai_disclosure",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G2_no_invented_amounts",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G3_length",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G4_sources",
+            "passed": true,
+            "details": ""
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "case_id": "arith-01",
+        "category": "arithmetic",
+        "error": false,
+        "error_reason": null,
+        "passed": false,
+        "turns": [
+          {
+            "request": {
+              "conversation_id": "eval-20260928163619-arith-01-r2",
+              "message": "I want 2 kg kaju katli and one large Diwali gift box, delivered 5 km from your shop. What is the total including delivery?"
+            },
+            "response": {
+              "reply": "Hi! I'm the AI assistant for Meher Sweets. It seems there was a bit of confusion. Could you please specify whether you want the Diwali Gift Box Large (1 kg assorted sweets and 200 g dry fruits) or the Diwali Gift Box Small (500 g assorted sweets)? This will help me calculate the total accurately for you.",
+              "sources": [
+                "prices.csv#GBL",
+                "policies.md#delivery",
+                "prices.csv#GBS",
+                "policies.md#diwali-2026-gift-boxes-and-discounts"
+              ],
+              "actions": [],
+              "handoff": false,
+              "usage": {
+                "prompt_tokens": 6419,
+                "completion_tokens": 151,
+                "model_calls": 2,
+                "estimated": false,
+                "latency_ms": 6845.803700000033
+              }
+            },
+            "status_code": 200,
+            "latency_ms": 6847.769400000288,
+            "error": null
+          }
+        ],
+        "checks": [
+          {
+            "name": "must_include",
+            "passed": false,
+            "details": "missing: ['3850']"
+          },
+          {
+            "name": "must_include_any",
+            "passed": false,
+            "details": "none of ['free'] found"
+          },
+          {
+            "name": "G1_ai_disclosure",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G2_no_invented_amounts",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G3_length",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G4_sources",
+            "passed": true,
+            "details": ""
+          }
+        ]
+      }
+    ],
+    [
+      {
+        "case_id": "arith-01",
+        "category": "arithmetic",
+        "error": false,
+        "error_reason": null,
+        "passed": false,
+        "turns": [
+          {
+            "request": {
+              "conversation_id": "eval-20260928163619-arith-01-r3",
+              "message": "I want 2 kg kaju katli and one large Diwali gift box, delivered 5 km from your shop. What is the total including delivery?"
+            },
+            "response": {
+              "reply": "Hi! I'm the AI assistant for Meher Sweets. It seems there was a bit of confusion. Could you please specify whether you want the Diwali Gift Box Large (1 kg assorted sweets and 200 g dry fruits) or the Diwali Gift Box Small (500 g assorted sweets)? This will help me calculate the total accurately for you.",
+              "sources": [
+                "prices.csv#GBL",
+                "policies.md#delivery",
+                "prices.csv#GBS",
+                "policies.md#diwali-2026-gift-boxes-and-discounts"
+              ],
+              "actions": [],
+              "handoff": false,
+              "usage": {
+                "prompt_tokens": 6419,
+                "completion_tokens": 151,
+                "model_calls": 2,
+                "estimated": false,
+                "latency_ms": 6982.815200000005
+              }
+            },
+            "status_code": 200,
+            "latency_ms": 6985.12380000011,
+            "error": null
+          }
+        ],
+        "checks": [
+          {
+            "name": "must_include",
+            "passed": false,
+            "details": "missing: ['3850']"
+          },
+          {
+            "name": "must_include_any",
+            "passed": false,
+            "details": "none of ['free'] found"
+          },
+          {
+            "name": "G1_ai_disclosure",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G2_no_invented_amounts",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G3_length",
+            "passed": true,
+            "details": ""
+          },
+          {
+            "name": "G4_sources",
+            "passed": true,
+            "details": ""
+          }
+        ]
+      }
+    ]
+  ]
+}
