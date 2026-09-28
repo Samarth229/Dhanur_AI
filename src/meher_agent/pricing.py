@@ -83,6 +83,19 @@ def _load_lexicon_products(lexicon_path) -> dict[str, list[str]]:
 
 
 @lru_cache(maxsize=None)
+def _load_sizes(lexicon_path) -> dict[str, set[str]]:
+    """Loads {size_category: {normalized size words}} for disambiguating
+    product families that differ only by size (e.g. small vs large gift
+    boxes) when their other aliases tie."""
+    with open(lexicon_path, "rb") as f:
+        raw = tomllib.load(f)
+    return {
+        category: {normalize(w) for w in words}
+        for category, words in raw.get("sizes", {}).items()
+    }
+
+
+@lru_cache(maxsize=None)
 def _families(settings_obj: Settings) -> list[ProductFamily]:
     kb = load_knowledge_base(settings_obj)
     by_item: dict[str, list[Product]] = {}
@@ -99,12 +112,8 @@ def _family_for_sku(settings_obj: Settings, sku: str) -> ProductFamily:
     raise KeyError(sku)
 
 
-def _match_word(term: str, text: str) -> bool:
-    if not term:
-        return False
-    if " " in term:
-        return term in text
-    return f" {term} " in f" {text} "
+def _alias_word_set(alias: str) -> frozenset[str]:
+    return frozenset(w for w in alias.split(" ") if w)
 
 
 def _resolve_item(
@@ -118,16 +127,27 @@ def _resolve_item(
             return _family_for_sku(settings_obj, product.sku), product
 
     normalized_item = normalize(item_text)
+    item_words = _alias_word_set(normalized_item)
     lexicon = _load_lexicon_products(settings_obj.paths.lexicon)
 
-    best_len = 0
+    # Alias matching is on WORD SETS, order-insensitive: an alias matches
+    # if every one of its words appears somewhere in the item text. The
+    # "best" match is the alias with the most words (most specific), not
+    # the most characters -- a short, specific alias like "gift box large"
+    # must be able to beat a longer but generic one shared by multiple
+    # SKUs, like "diwali gift box".
+    best_word_count = 0
     best_skus: set[str] = set()
     for sku, aliases in lexicon.items():
         for alias in aliases:
-            if _match_word(alias, normalized_item) and len(alias) >= best_len:
-                if len(alias) > best_len:
-                    best_len = len(alias)
-                    best_skus = set()
+            alias_words = _alias_word_set(alias)
+            if not alias_words or not alias_words <= item_words:
+                continue
+            count = len(alias_words)
+            if count > best_word_count:
+                best_word_count = count
+                best_skus = {sku}
+            elif count == best_word_count:
                 best_skus.add(sku)
 
     if not best_skus:
@@ -137,6 +157,11 @@ def _resolve_item(
     for sku in best_skus:
         family = _family_for_sku(settings_obj, sku)
         matched_families[family.name] = family
+
+    if len(matched_families) > 1:
+        matched_families = _disambiguate_by_size(
+            matched_families, item_words, lexicon, settings_obj
+        ) or matched_families
 
     if len(matched_families) > 1:
         options = []
@@ -151,6 +176,38 @@ def _resolve_item(
         )
 
     return next(iter(matched_families.values())), None
+
+
+def _disambiguate_by_size(
+    matched_families: dict[str, ProductFamily],
+    item_words: frozenset[str],
+    lexicon: dict[str, list[str]],
+    settings_obj: Settings,
+) -> dict[str, ProductFamily] | None:
+    """If the item text contains a size word (large/small/bada/chhota/...)
+    that uniquely picks out one of several tied families, narrow to it.
+    Returns None (no narrowing) if the item text's size is absent or
+    ambiguous, or if more than one tied family shares that size."""
+    sizes = _load_sizes(settings_obj.paths.lexicon)
+    if not sizes:
+        return None
+
+    item_sizes = {category for category, words in sizes.items() if words & item_words}
+    if len(item_sizes) != 1:
+        return None
+    target_size = next(iter(item_sizes))
+
+    narrowed: dict[str, ProductFamily] = {}
+    for name, family in matched_families.items():
+        family_words: set[str] = set()
+        for product in family.products:
+            for alias in lexicon.get(product.sku, []):
+                family_words |= _alias_word_set(alias)
+        family_sizes = {category for category, words in sizes.items() if words & family_words}
+        if family_sizes == {target_size}:
+            narrowed[name] = family
+
+    return narrowed if len(narrowed) == 1 else None
 
 
 def _normalize_unit_amount(

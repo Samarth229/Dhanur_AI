@@ -117,6 +117,32 @@ def test_gift_box_ambiguous():
     assert exc_info.value.code == "AMBIGUOUS"
 
 
+# ---------------------------------------------------------------------------
+# Size-word disambiguation (arith-01 regression fix)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "phrase,expected_sku",
+    [
+        ("large Diwali gift box", "GBL"),
+        ("diwali box large", "GBL"),
+        ("bada gift box", "GBL"),
+        ("छोटा गिफ्ट बॉक्स", "GBS"),  # chhota gift box
+        ("small gift box", "GBS"),
+    ],
+)
+def test_size_word_disambiguates_gift_box(phrase, expected_sku):
+    quote = q([item(phrase, 1, "box")])
+    assert quote.lines[0].sku == expected_sku
+
+
+def test_plain_gift_box_still_ambiguous_without_size_word():
+    with pytest.raises(PricingError) as exc_info:
+        q([item("diwali gift box", 1, "box")])
+    assert exc_info.value.code == "AMBIGUOUS"
+
+
 def test_sugar_free_kaju_katli_resolves_correctly():
     quote = q([item("sugar free kaju katli", 500, "g")])
     assert quote.grand_total == 780

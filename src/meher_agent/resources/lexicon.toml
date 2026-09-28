@@ -5,6 +5,14 @@
 # used to match a customer message to the relevant product or policy
 # section. It is read by src/meher_agent/retrieval.py.
 
+[sizes]
+# General, data-driven size words used by src/meher_agent/pricing.py to
+# disambiguate between product families that differ only by size (e.g.
+# GBS vs GBL), when the customer's/model's item text ties on alias
+# specificity otherwise (e.g. "diwali gift box" matches both).
+large = ["large", "big", "bada", "बड़ा", "badi", "बड़ी"]
+small = ["small", "chhota", "choti", "छोटा", "छोटी"]
+
 [products]
 KK-1000 = ["kaju katli", "kaju barfi", "काजू कतली", "काजू बर्फी", "kaju kati", "kaju katri"]
 KK-500 = ["kaju katli", "kaju barfi", "काजू कतली", "काजू बर्फी", "kaju kati", "kaju katri"]
@@ -18,8 +26,8 @@ NM-400 = ["mixed namkeen", "namkeen", "नमकीन", "मिक्स नम
 AB-400 = ["aloo bhujia", "bhujia", "आलू भुजिया", "भुजिया"]
 SM-1 = ["samosa", "samosas", "samose", "samosay", "समोसा"]
 DH-500 = ["khaman dhokla", "dhokla", "ढोकला", "खमन ढोकला"]
-GBS = ["gift box", "diwali gift box", "small gift box", "gift box small", "डिब्बा", "गिफ्ट बॉक्स", "छोटा डिब्बा", "उपहार बॉक्स"]
-GBL = ["gift box", "diwali gift box", "large gift box", "gift box large", "big gift box", "डिब्बा", "गिफ्ट बॉक्स", "बड़ा डिब्बा", "उपहार बॉक्स"]
+GBS = ["gift box", "diwali gift box", "diwali box", "small gift box", "gift box small", "डिब्बा", "गिफ्ट बॉक्स", "छोटा डिब्बा", "उपहार बॉक्स"]
+GBL = ["gift box", "diwali gift box", "diwali box", "large gift box", "gift box large", "big gift box", "डिब्बा", "गिफ्ट बॉक्स", "बड़ा डिब्बा", "उपहार बॉक्स"]
 
 [sections]
 "policies.md#prices-and-gst" = ["price", "prices", "gst", "invoice", "gstin", "rate", "cost", "kimat", "keemat", "कीमत", "दाम", "रेट", "जीएसटी", "इनवॉइस"]
