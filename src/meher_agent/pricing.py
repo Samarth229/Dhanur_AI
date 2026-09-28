@@ -22,7 +22,7 @@ from meher_agent.retrieval import normalize
 WEIGHT_UNITS = {"kg": 1000, "kilo": 1000, "kilogram": 1000, "g": 1, "gm": 1, "gram": 1}
 PIECE_UNITS = {"piece", "pc", "pcs", "nos"}
 BOX_UNITS = {"box", "boxes"}
-PACK_UNITS = {"pack", "packet"}
+PACK_UNITS = {"pack", "packet", "पैक", "dabba"}
 
 SWEET_TYPES = {"dry sweet", "milk sweet"}
 GIFT_BOX_SKUS = {"GBS", "GBL"}

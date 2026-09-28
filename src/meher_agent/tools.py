@@ -61,6 +61,12 @@ TOOLS: list[dict[str, Any]] = [
                                 "unit": {
                                     "type": "string",
                                     "enum": ["kg", "g", "piece", "box", "pack"],
+                                    "description": (
+                                        "If the customer said pack/packet/पैक/dabba, use "
+                                        "'pack' (a whole pack of that product's size), NOT "
+                                        "'kg' -- packs are not the same as kilograms. If "
+                                        "they said kilo/किलो/kilogram, use 'kg'."
+                                    ),
                                 },
                             },
                             "required": ["item", "amount", "unit"],

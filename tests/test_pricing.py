@@ -76,6 +76,23 @@ def test_1_kg_kaju_katli_picks_cheaper_single_pack():
     assert quote.lines[0].sku == "KK-1000"
 
 
+def test_pack_unit_devanagari_alias():
+    # Fix 7: "पैक" must mean one pack (500 g), not kilograms.
+    quote = q([item("rasmalai", 2, "पैक")])
+    assert quote.grand_total == 680
+
+
+def test_pack_unit_dabba_alias():
+    quote = q([item("rasmalai", 2, "dabba")])
+    assert quote.grand_total == 680
+
+
+def test_pack_vs_kg_give_different_totals():
+    pack_quote = q([item("rasmalai", 2, "pack")])
+    kg_quote = q([item("rasmalai", 2, "kg")])
+    assert pack_quote.grand_total != kg_quote.grand_total
+
+
 def test_750g_motichoor_pack_size_error():
     with pytest.raises(PricingError) as exc_info:
         q([item("motichoor laddoo", 750, "g")])
