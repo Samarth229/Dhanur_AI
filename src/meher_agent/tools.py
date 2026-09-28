@@ -8,13 +8,16 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
+
+import re
 
 from meher_agent.config import Settings
 from meher_agent.knowledge import KnowledgeBase
 from meher_agent.pricing import PricingError, quote_order
+from meher_agent.privacy import find_emails, find_phones
 from meher_agent.stores import EscalationStore, LeadStore
 from meher_agent.validation import (
     ValidationError,
@@ -23,6 +26,9 @@ from meher_agent.validation import (
     normalize_name,
     normalize_phone,
 )
+
+_DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
+_NAME_TOKEN_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
 
 logger = logging.getLogger(__name__)
 
@@ -135,6 +141,7 @@ class ToolContext:
     lead_store: LeadStore
     escalation_store: EscalationStore
     today: date
+    customer_messages: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -225,11 +232,63 @@ def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResul
     return ToolResult(ok=True, name="calculate_order", content=content, action=None, handoff=False, data=quote)
 
 
+def _grounded_phones(customer_messages: list[str]) -> set[str]:
+    found = set()
+    for msg in customer_messages:
+        found.update(find_phones(msg))
+    return found
+
+
+def _grounded_emails(customer_messages: list[str]) -> set[str]:
+    found = set()
+    for msg in customer_messages:
+        for candidate in find_emails(msg):
+            try:
+                found.add(normalize_email(candidate))
+            except ValidationError:
+                continue
+    return found
+
+
+def _ground_or_reject(field_name: str, value: str | None, grounded: set[str]) -> str | None:
+    """Fix 5a: the model's phone/email must match something the customer
+    actually typed. If it doesn't, but exactly one grounded value exists,
+    use that instead (the model may have mis-copied it); if none exists,
+    reject rather than save a value the customer never gave."""
+    if value is None:
+        return None
+    if value in grounded:
+        return value
+    if len(grounded) == 1:
+        return next(iter(grounded))
+    raise ToolArgumentError(f"that {field_name} was not given by the customer; ask for it.")
+
+
+def _name_grounded(name: str, customer_messages: list[str]) -> bool:
+    """Fix 5b: every token of the name must appear as a whole word in what
+    the customer typed, so the model can't invent a name. Skipped when any
+    customer message contains Devanagari, since the model may transliterate
+    a Hindi name into the Roman-script `name` argument."""
+    if any(_DEVANAGARI_RE.search(m) for m in customer_messages):
+        return True
+    combined = " ".join(customer_messages).casefold()
+    # Replace punctuation with spaces (not just casefold) so a name right
+    # before a comma, period or @ still matches as a whole word.
+    combined_clean = re.sub(r"[^\w\s]", " ", combined, flags=re.UNICODE)
+    padded = f" {combined_clean} "
+    tokens = _NAME_TOKEN_RE.findall(name.casefold())
+    if not tokens:
+        return True
+    return all(f" {tok} " in padded for tok in tokens)
+
+
 def _handle_save_lead(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     name_raw = _clean_optional(args.get("name"))
     if not name_raw:
         raise ToolArgumentError("name is required.")
     name = normalize_name(str(name_raw))
+    if not _name_grounded(name, ctx.customer_messages):
+        raise ToolArgumentError("that name was not given by the customer; ask for their name.")
 
     need_raw = _clean_optional(args.get("need"))
     if not need_raw:
@@ -240,9 +299,11 @@ def _handle_save_lead(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
     phone_raw = _clean_optional(args.get("phone"))
     phone = normalize_phone(str(phone_raw)) if phone_raw is not None else None
+    phone = _ground_or_reject("phone", phone, _grounded_phones(ctx.customer_messages))
 
     email_raw = _clean_optional(args.get("email"))
     email = normalize_email(str(email_raw)) if email_raw is not None else None
+    email = _ground_or_reject("email", email, _grounded_emails(ctx.customer_messages))
 
     if phone is None and email is None:
         raise ToolArgumentError("At least a phone number or an email address is required.")

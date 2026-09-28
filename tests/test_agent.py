@@ -296,3 +296,65 @@ def test_no_auto_escalate_for_false_positive_bad_question():
     result = agent.handle("c1", "Is kaju katli bad for diabetics?")
     assert result.actions == []
     assert result.handoff is False
+
+
+# ---------------------------------------------------------------------------
+# Fix 5c: lead nudge -- customer gave contact details but no save_lead call
+# ---------------------------------------------------------------------------
+
+
+def test_lead_nudge_forces_save_lead_when_contact_given_and_ignored():
+    agent = make_agent(
+        [
+            text_response("Sure, we can help with a wedding order! When is the date?"),
+            tool_response(
+                "save_lead", {"name": "Amit", "need": "wedding order", "email": "amit@example.com"}
+            ),
+            text_response("Thanks, the team will follow up by email."),
+        ]
+    )
+    result = agent.handle("c1", "Wedding order please, I'm Amit, amit@example.com")
+    assert any(a["type"] == "save_lead" for a in result.actions)
+
+
+def test_no_lead_nudge_when_no_contact_given():
+    agent = make_agent([text_response("Sure, could you share your name and contact details?")])
+    result = agent.handle("c1", "I want a custom order for a wedding.")
+    assert result.actions == []
+
+
+def test_no_lead_nudge_when_save_lead_already_called():
+    agent = make_agent(
+        [
+            tool_response(
+                "save_lead", {"name": "Amit", "need": "wedding order", "email": "amit@example.com"}
+            ),
+            text_response("Thanks, the team will follow up by email."),
+        ]
+    )
+    result = agent.handle("c1", "Wedding order, I'm Amit, amit@example.com")
+    assert result.usage["model_calls"] == 2
+
+
+# ---------------------------------------------------------------------------
+# Fix 6: calculator enforcement for totals
+# ---------------------------------------------------------------------------
+
+
+def test_calc_nudge_forces_calculate_order_for_total_request():
+    agent = make_agent(
+        [
+            text_response("The total for 2 kg kaju katli would be Rs 2500."),
+            tool_response("calculate_order", {"items": [{"item": "kaju katli", "amount": 2, "unit": "kg"}]}),
+            text_response("The total for 2 kg kaju katli is Rs 2,400."),
+        ]
+    )
+    result = agent.handle("c1", "2 kg kaju katli total kitna hoga?")
+    assert "2,400" in result.reply
+    assert "2500" not in result.reply
+
+
+def test_no_calc_nudge_for_single_price_lookup():
+    agent = make_agent([text_response("Kaju Katli is Rs 620 for 500 g.")])
+    result = agent.handle("c1", "How much is kaju katli?")
+    assert result.usage["model_calls"] == 1

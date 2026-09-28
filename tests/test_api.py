@@ -113,7 +113,13 @@ def test_leads_endpoint_masks_contact_details():
             text_response("Thanks, the team will follow up by email."),
         ]
     ) as client:
-        client.post("/chat", json={"conversation_id": "conv-1", "message": "save my details"})
+        client.post(
+            "/chat",
+            json={
+                "conversation_id": "conv-1",
+                "message": "Save my details, I'm Ritu Malhotra, ritu.m@example.com, 9876543210",
+            },
+        )
         resp = client.get("/leads")
 
     assert resp.status_code == 200
@@ -191,7 +197,11 @@ def test_health_endpoint():
 
 
 def test_logs_never_contain_raw_contact_details(caplog):
-    with make_client([text_response("Noted, thank you.")]) as client:
+    # The message contains a valid phone+email, which now also triggers the
+    # Fix 5c lead nudge (a correction retry asking the model to call
+    # save_lead) -- script a second response so that retry has something to
+    # consume; the test itself only cares about what ends up in the logs.
+    with make_client([text_response("Noted, thank you.")] * 4) as client:
         with caplog.at_level(logging.INFO):
             client.post(
                 "/chat",

@@ -18,7 +18,7 @@ KB = load_knowledge_base(SETTINGS)
 LEXICON = load_lexicon(SETTINGS)
 
 
-def make_ctx(conversation_id="conv-1", today=None, lead_store=None, escalation_store=None):
+def make_ctx(conversation_id="conv-1", today=None, lead_store=None, escalation_store=None, customer_messages=None):
     return ToolContext(
         conversation_id=conversation_id,
         kb=KB,
@@ -27,6 +27,7 @@ def make_ctx(conversation_id="conv-1", today=None, lead_store=None, escalation_s
         lead_store=lead_store or LeadStore(),
         escalation_store=escalation_store or EscalationStore(),
         today=today or date(2026, 9, 28),
+        customer_messages=customer_messages if customer_messages is not None else [],
     )
 
 
@@ -92,7 +93,7 @@ def test_save_lead_with_wrong_date_format():
     result = execute_tool(
         "save_lead",
         {"name": "Amit", "need": "wedding order", "email": "a@example.com", "date": "03-11-2026"},
-        make_ctx(),
+        make_ctx(customer_messages=["I'm Amit, a@example.com"]),
     )
     assert result.ok is False
     assert result.content.startswith("ERROR:")
@@ -145,7 +146,7 @@ def test_unexpected_exception_is_caught(monkeypatch):
 
 
 def test_past_date_hint_gives_next_occurrence():
-    ctx = make_ctx(today=date(2026, 9, 28))
+    ctx = make_ctx(today=date(2026, 9, 28), customer_messages=["I'm Amit, a@example.com"])
     result = execute_tool(
         "save_lead",
         {"name": "Amit", "need": "wedding order", "email": "a@example.com", "date": "2025-11-03"},
@@ -172,7 +173,7 @@ def test_optional_missing_values_treated_as_absent(missing_value):
             "quantity": missing_value,
             "date": missing_value,
         },
-        make_ctx(),
+        make_ctx(customer_messages=["I'm Amit, amit@example.com"]),
     )
     assert result.ok is True
 
@@ -192,7 +193,13 @@ def test_seed_lead_01():
             "quantity": "30 boxes",
             "date": "2026-11-03",
         },
-        make_ctx(today=date(2026, 9, 28)),
+        make_ctx(
+            today=date(2026, 9, 28),
+            customer_messages=[
+                "We need 30 large gift boxes for our office Diwali party on 3 November. "
+                "I'm Ritu Malhotra, ritu.m@example.com"
+            ],
+        ),
     )
     assert result.ok is True
     assert result.action["args"]["email"] == "ritu.m@example.com"
@@ -205,7 +212,11 @@ def test_seed_lead_01():
 
 def test_upsert_merges_across_two_calls_same_conversation():
     store = LeadStore()
-    ctx = make_ctx(conversation_id="conv-x", lead_store=store)
+    ctx = make_ctx(
+        conversation_id="conv-x",
+        lead_store=store,
+        customer_messages=["I'm Amit, amit@example.com", "my phone is 9876543210"],
+    )
 
     r1 = execute_tool(
         "save_lead", {"name": "Amit", "need": "wedding order", "email": "amit@example.com"}, ctx
@@ -228,12 +239,12 @@ def test_upsert_different_conversation_creates_second_lead():
     execute_tool(
         "save_lead",
         {"name": "Amit", "need": "wedding order", "email": "amit@example.com"},
-        make_ctx(conversation_id="conv-a", lead_store=store),
+        make_ctx(conversation_id="conv-a", lead_store=store, customer_messages=["I'm Amit, amit@example.com"]),
     )
     execute_tool(
         "save_lead",
         {"name": "Ritu", "need": "gift boxes", "phone": "9876543210"},
-        make_ctx(conversation_id="conv-b", lead_store=store),
+        make_ctx(conversation_id="conv-b", lead_store=store, customer_messages=["I'm Ritu, phone 9876543210"]),
     )
     assert len(store.list_masked()) == 2
 
@@ -273,3 +284,109 @@ def test_calculate_order_success_no_action_and_allowed_amounts():
     assert result.ok is True
     assert result.action is None
     assert 3850 in result.data.allowed_amounts
+
+
+# ---------------------------------------------------------------------------
+# Fix 5a: email/phone grounding
+# ---------------------------------------------------------------------------
+
+
+def test_email_grounding_substitutes_single_customer_typed_value():
+    # Model gives a mangled email, but the customer typed exactly one real one.
+    result = execute_tool(
+        "save_lead",
+        {"name": "Neha Kapoor", "need": "custom boxes", "email": "neha@company.co.in"},
+        make_ctx(customer_messages=["I'm Neha Kapoor, email Neha.K@Company.co.in"]),
+    )
+    assert result.ok is True
+    assert result.action["args"]["email"] == "neha.k@company.co.in"
+
+
+def test_email_grounding_rejects_when_no_customer_email_exists():
+    result = execute_tool(
+        "save_lead",
+        {"name": "Amit", "need": "wedding order", "email": "amit@example.com"},
+        make_ctx(customer_messages=["I'm Amit, please call me back"]),
+    )
+    assert result.ok is False
+    assert "not given by the customer" in result.content
+
+
+def test_phone_grounding_substitutes_single_customer_typed_value():
+    result = execute_tool(
+        "save_lead",
+        {"name": "Amit Verma", "need": "wedding order", "phone": "9999999999"},
+        make_ctx(customer_messages=["I'm Amit Verma, number 98765 43210."]),
+    )
+    assert result.ok is True
+    assert result.action["args"]["phone"] == "9876543210"
+
+
+def test_phone_grounding_rejects_when_no_customer_phone_exists():
+    result = execute_tool(
+        "save_lead",
+        {"name": "Amit", "need": "wedding order", "phone": "9876543210"},
+        make_ctx(customer_messages=["I'm Amit, no phone given"]),
+    )
+    assert result.ok is False
+    assert "not given by the customer" in result.content
+
+
+def test_email_grounding_passes_when_model_value_matches_customer_value():
+    result = execute_tool(
+        "save_lead",
+        {"name": "Amit", "need": "wedding order", "email": "amit@example.com"},
+        make_ctx(customer_messages=["I'm Amit, amit@example.com"]),
+    )
+    assert result.ok is True
+    assert result.action["args"]["email"] == "amit@example.com"
+
+
+# ---------------------------------------------------------------------------
+# Fix 5b: name grounding (the lead-03 "Mr. Patel" hallucination scenario)
+# ---------------------------------------------------------------------------
+
+
+def test_name_grounding_rejects_hallucinated_name():
+    # The model invents "Mr. Patel" -- the customer never said that name.
+    result = execute_tool(
+        "save_lead",
+        {"name": "Mr. Patel", "need": "custom sweet boxes for a corporate event", "phone": "9876543210"},
+        make_ctx(customer_messages=["We want custom sweet boxes for a corporate event next month."]),
+    )
+    assert result.ok is False
+    assert "name was not given by the customer" in result.content
+
+
+def test_name_grounding_passes_when_name_was_typed():
+    result = execute_tool(
+        "save_lead",
+        {"name": "Neha Kapoor", "need": "custom boxes", "email": "neha.k@company.co.in"},
+        make_ctx(customer_messages=["I'm Neha Kapoor, email Neha.K@Company.co.in. Around 40 boxes."]),
+    )
+    assert result.ok is True
+
+
+def test_name_grounding_skipped_when_customer_wrote_devanagari():
+    # The model transliterates a Hindi name into Roman script -- allowed.
+    result = execute_tool(
+        "save_lead",
+        {"name": "Sunita Gupta", "need": "wedding order", "email": "sunita.g@example.com"},
+        make_ctx(
+            customer_messages=[
+                "मेरी बेटी की शादी 20 दिसंबर को है, मेरा नाम सुनीता गुप्ता है, ईमेल sunita.g@example.com"
+            ]
+        ),
+    )
+    assert result.ok is True
+
+
+def test_lead_04_invalid_phone_still_rejected_by_format_not_grounding():
+    # "12345" is invalid on its own terms -- must fail with the phone-format
+    # error, not a grounding error, and regardless never gets saved.
+    result = execute_tool(
+        "save_lead",
+        {"name": "Rohit Sharma", "need": "wedding order for 200 guests", "phone": "12345"},
+        make_ctx(customer_messages=["Wedding order for 200 guests. My name is Rohit Sharma, phone 12345."]),
+    )
+    assert result.ok is False
