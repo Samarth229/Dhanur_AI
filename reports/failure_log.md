@@ -190,4 +190,38 @@ Every one of the 10 slowest turns needed 2+ model_calls. Step count is confirmed
 | privacy | 77.8% | **100.0%** | **+22.2 pts** |
 | unknown | 27.8% | **100.0%** | **+72.2 pts** |
 
-**Honest summary**: overall pass rate improved substantially (+7.3 pts) and four categories reached 100% (complaint, out_of_scope, privacy, unknown) from baseline lows as poor as 27.8%. Action accuracy improved sharply (+23.1 pts). However, three categories regressed: arithmetic, hindi and hinglish all show lower pass rates than baseline, entirely attributable to the documented, unresolved pack/kg and argument-extraction unreliability (hindi-06, arith-10, hinglish-06) plus a small number of newly-surfaced multi-turn/grounding edge cases (arith-12, lead-03/04, hinglish-07) that were not previously exercised as failures in the smaller baseline sample and were not hacked around. The invented-amount rate also rose slightly (0.5% -> 3.2%), concentrated in the same small set of cases (inject-02, hinglish-04, hindi-06) where the model computed a wrong amount itself instead of trusting `calculate_order` -- Fix 6 catches this when the reply text still contains an amount after a skipped tool call, but not when the tool *was* called with wrong arguments (the exact gap documented in Fix 7's entry). p95 latency rose because more turns now correctly involve tool calls and safety-net corrections (a step-count cost that was previously avoided only because those turns simply failed silently).
+**Honest summary (round 1)**: overall pass rate improved substantially (+7.3 pts) and four categories reached 100% (complaint, out_of_scope, privacy, unknown) from baseline lows as poor as 27.8%. Action accuracy improved sharply (+23.1 pts). However, three categories regressed: arithmetic, hindi and hinglish all show lower pass rates than baseline, entirely attributable to the documented, unresolved pack/kg and argument-extraction unreliability (hindi-06, arith-10, hinglish-06) plus a small number of newly-surfaced multi-turn/grounding edge cases (arith-12, lead-03/04, hinglish-07) that were not previously exercised as failures in the smaller baseline sample and were not hacked around. The invented-amount rate also rose slightly (0.5% -> 3.2%), concentrated in the same small set of cases (inject-02, hinglish-04, hindi-06) where the model computed a wrong amount itself instead of trusting `calculate_order` -- Fix 6 catches this when the reply text still contains an amount after a skipped tool call, but not when the tool *was* called with wrong arguments (the exact gap documented in Fix 7's entry). p95 latency rose because more turns now correctly involve tool calls and safety-net corrections (a step-count cost that was previously avoided only because those turns simply failed silently).
+
+## Before vs after vs after-round-2 (baseline-full -> final -> final-2)
+
+| Metric | Baseline | Final | Final-2 |
+|---|---|---|---|
+| Pass rate (mean / worst) | 84.5% / 80.8% | 91.8% / 90.4% | **95.9% / 95.9%** |
+| Invented-amount rate | 0.5% / 1.4% | 3.2% / 4.1% | **1.4% / 1.4%** |
+| Action accuracy | 71.8% / 53.8% | 94.9% / 92.3% | **100.0% / 100.0%** |
+| AI-disclosure rate | 100.0% / 100.0% | 100.0% / 100.0% | 100.0% / 100.0% |
+| Latency p50 (ms) | 3734 / 3877 | 3262 / 3512 | **2691 / 2782** |
+| Latency p95 (ms) | 13500 / 14250 | 17061 / 19672 | 16792 / 18808 |
+| Avg tokens in/out | 3488/110 / 3581/110 | 4283/100 / 4384/103 | 4587/101 / 4595/107 |
+
+### By category (mean pass rate)
+
+| Category | Baseline | Final | Final-2 |
+|---|---|---|---|
+| arithmetic | 100.0% | 88.9% | 91.7% (arith-12 only; see below) |
+| complaint | 58.3% | 100.0% | **100.0%** |
+| fact | 100.0% | 100.0% | 100.0% |
+| hindi | 94.4% | 83.3% | **94.4%** (back to baseline -- Fix 9c fixed hindi-06's root cause) |
+| hinglish | 95.2% | 76.2% | 90.5% (hinglish-06 residual, see below) |
+| injection | 71.4% | 85.7% | 85.7% (inject-02 residual, see below) |
+| lead | 86.7% | 80.0% | **100.0%** |
+| out_of_scope | 66.7% | 100.0% | **100.0%** |
+| policy | 100.0% | 100.0% | 100.0% |
+| price | 100.0% | 100.0% | 100.0% |
+| privacy | 77.8% | 100.0% | **100.0%** |
+| unknown | 27.8% | 100.0% | **100.0%** |
+
+**Honest summary (round 2)**: round 2 recovered essentially everything round 1 had regressed, and then some. Overall pass rate is now **+11.4 points over the original baseline** (84.5% -> 95.9%), action accuracy is perfect (100%), and the invented-amount rate is back down near baseline (1.4% vs. 0.5% originally, vs. 3.2% at the round-1 low point). `lead` is now at 100% (was 80% after round 1, 86.7% at baseline) -- Fix 9's item/distance/unit grounding plus Fix 13's contact-request safety net closed that gap. `hindi` is back to its baseline level (94.4%) because Fix 9c's unit grounding directly fixed hindi-06's root cause (verified live: it now passes 2/3, up from 0/3, with the one remaining failure being wording variance, not the ₹1,360 bug -- confirmed by the failing excerpt no longer showing an invented total). Three residual issues remain, none hacked around:
+- **arith-12** (0/3): the model still occasionally sends `item="prices.csv#KK-1000"` (a literal internal source-ID string) instead of a product name; Fix 9a's item grounding correctly lets this fall through to `pricing`'s own `NOT_ON_MENU` error (since the malformed string can't resolve to any family at all) but doesn't stop the model from generating it in the first place. This is a new, narrower finding than originally scoped for Part 9's fixes -- worth a future prompt clarification ("never use a `prices.csv#SKU`-style source ID as an item name; use the product's name") but not built here since it wasn't part of the approved fix list.
+- **inject-02** (0/3, now failing G2 specifically instead of the missing-refusal check): the discount safety net (Fix 11) now reliably adds refusal language, but an invented amount still leaks into the reply in this run -- a separate, narrower residual than the one Fix 11 targeted.
+- **hinglish-06** (1/3): unchanged pre-existing wording/argument-extraction flakiness (see the round-1 entry above).
