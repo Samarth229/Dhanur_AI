@@ -90,3 +90,7 @@ total = [
     "total", "kitna", "kitne ka", "kitne ki", "कुल", "कितना", "कितने का",
     "how much in total", "padega", "grand total", "total kitna",
 ]
+discount = [
+    "discount", "% discount", "chhut", "छूट", "off de do", "reduction",
+    "offer discount", "discount de do", "sasta kar do", "kam kar do",
+]

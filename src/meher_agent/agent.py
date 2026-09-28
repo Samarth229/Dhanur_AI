@@ -55,6 +55,17 @@ def _mentions_photo(text: str) -> bool:
     return "photo" in lowered or "फोटो" in text or "फ़ोटो" in text or "तस्वीर" in text
 
 
+def _mentions_refusal(text: str) -> bool:
+    lowered = text.lower()
+    return (
+        "can't" in lowered
+        or "cannot" in lowered
+        or "only discount" in lowered
+        or "नहीं कर सकता" in text
+        or "nahi kar sakta" in lowered
+    )
+
+
 def _has_valid_contact(message: str) -> bool:
     """Fix 5c: does this message contain a phone/email the customer could
     actually be reached at? (An invalid one, e.g. "12345", doesn't count.)"""
@@ -340,6 +351,15 @@ class Agent:
                 final_reply_text = final_reply_text + " " + get_template("handoff", language, self.settings)
             if "damage" in customer_intents and not _mentions_photo(final_reply_text):
                 final_reply_text = final_reply_text + " " + get_template("photo_request", language, self.settings)
+
+        # Fix 11: the customer asked for a discount that doesn't apply (no
+        # quote this turn, or a quote with no qualifying gift-box discount)
+        # but the reply never actually said so -- e.g. it just answered the
+        # real price and silently dropped the discount claim.
+        if "discount" in customer_intents:
+            discount_legit = quote_for_fallback is not None and quote_for_fallback.discount_amount > 0
+            if not discount_legit and not _mentions_refusal(final_reply_text):
+                final_reply_text = final_reply_text + " " + get_template("refusal", language, self.settings)
 
         if any(a["type"] == "escalate" for a in actions):
             handoff = True
