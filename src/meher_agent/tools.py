@@ -100,10 +100,13 @@ TOOLS: list[dict[str, Any]] = [
         "function": {
             "name": "escalate",
             "description": (
-                "Hand the conversation to the human team. Use for complaints, "
-                "damaged deliveries, when the customer asks for a person, or when "
-                "they accept your offer to pass an unanswered question to the team. "
-                "Do NOT use for out-of-scope requests or questions you can answer."
+                "Hand the conversation to the human team. Use ONLY for: complaints, "
+                "damaged deliveries, the customer asking for a person, or the "
+                "customer accepting your offer to pass on an unanswered question. "
+                "Do NOT use for out-of-scope requests (homework, coding, general "
+                "knowledge, other businesses) -- decline those yourself in one "
+                "sentence and call no tool at all. Do NOT use for questions you can "
+                "answer from SHOP DATA."
             ),
             "parameters": {
                 "type": "object",
