@@ -67,12 +67,22 @@ def _run_one_case(
     }
 
 
+def filter_cases(cases: list[Case], only: str | None) -> list[Case]:
+    """Filters cases by a comma-separated list of case ids and/or categories.
+    An empty/None `only` returns all cases unchanged."""
+    if not only:
+        return cases
+    selectors = {s.strip() for s in only.split(",") if s.strip()}
+    return [c for c in cases if c.id in selectors or c.category in selectors]
+
+
 def run_eval(
     cases_path: str,
     settings,
     runs: int | None = None,
     base_url: str | None = None,
     label: str | None = None,
+    only: str | None = None,
     transport=None,
 ) -> int:
     runs = runs or settings.eval.runs
@@ -84,6 +94,11 @@ def run_eval(
         cases = load_cases(cases_path)
     except CaseLoadError as exc:
         print(f"Error loading cases: {exc}")
+        return 1
+
+    cases = filter_cases(cases, only)
+    if not cases:
+        print(f"No cases matched --only '{only}'.")
         return 1
 
     client = EvalClient(base_url, timeout_s, transport=transport)

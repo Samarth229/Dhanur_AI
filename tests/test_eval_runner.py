@@ -11,7 +11,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from evals_harness.loader import CaseLoadError, load_cases
-from evals_harness.runner import run_eval
+from evals_harness.runner import filter_cases, run_eval
 from meher_agent.config import load_settings
 
 SETTINGS = load_settings()
@@ -139,3 +139,63 @@ def test_health_check_failure_exits_nonzero(tmp_path):
     test_settings = settings_with_reports_dir(tmp_path / "reports")
     exit_code = run_eval(str(cases_path), test_settings, runs=1, base_url="http://testserver", transport=transport)
     assert exit_code != 0
+
+
+# ---------------------------------------------------------------------------
+# --only filter
+# ---------------------------------------------------------------------------
+
+
+def _make_cases(tmp_path):
+    cases_path = write_cases_file(
+        tmp_path,
+        [
+            json.dumps({"id": "complaint-01", "category": "complaint", "turns": ["hi"]}),
+            json.dumps({"id": "complaint-02", "category": "complaint", "turns": ["hi"]}),
+            json.dumps({"id": "unknown-04", "category": "unknown", "turns": ["hi"]}),
+            json.dumps({"id": "price-01", "category": "price", "turns": ["hi"]}),
+        ],
+    )
+    return load_cases(cases_path)
+
+
+def test_filter_cases_by_category(tmp_path):
+    cases = _make_cases(tmp_path)
+    filtered = filter_cases(cases, "complaint")
+    assert {c.id for c in filtered} == {"complaint-01", "complaint-02"}
+
+
+def test_filter_cases_by_id(tmp_path):
+    cases = _make_cases(tmp_path)
+    filtered = filter_cases(cases, "unknown-04")
+    assert {c.id for c in filtered} == {"unknown-04"}
+
+
+def test_filter_cases_mixed_categories_and_ids(tmp_path):
+    cases = _make_cases(tmp_path)
+    filtered = filter_cases(cases, "complaint, unknown-04")
+    assert {c.id for c in filtered} == {"complaint-01", "complaint-02", "unknown-04"}
+
+
+def test_filter_cases_none_returns_all(tmp_path):
+    cases = _make_cases(tmp_path)
+    assert filter_cases(cases, None) == cases
+    assert filter_cases(cases, "") == cases
+
+
+def test_run_eval_with_only_runs_subset(tmp_path):
+    cases_path = write_cases_file(
+        tmp_path,
+        [
+            json.dumps({"id": "c1", "category": "fact", "turns": ["hi"]}),
+            json.dumps({"id": "c2", "category": "price", "turns": ["hi"]}),
+        ],
+    )
+    transport = httpx.MockTransport(make_handler())
+    test_settings = settings_with_reports_dir(tmp_path / "reports")
+
+    run_eval(str(cases_path), test_settings, runs=1, base_url="http://testserver", transport=transport, only="price")
+
+    report = json.loads((test_settings.paths.reports_dir / "eval_report.json").read_text(encoding="utf-8"))
+    case_ids = {r["case_id"] for r in report["runs"][0]}
+    assert case_ids == {"c2"}

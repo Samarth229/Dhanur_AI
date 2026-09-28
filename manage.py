@@ -59,6 +59,7 @@ def cmd_eval(args: argparse.Namespace) -> int:
         runs=args.runs,
         base_url=base_url,
         label=args.label,
+        only=args.only,
     )
 
 
@@ -179,6 +180,9 @@ def main() -> int:
     p_eval.add_argument("--runs", type=int, default=None, help="Number of runs (default from config).")
     p_eval.add_argument("--base-url", default=None, help="Service base URL (default from config / EVAL_BASE_URL).")
     p_eval.add_argument("--label", default=None, help="Label for this eval run.")
+    p_eval.add_argument(
+        "--only", default=None, help="Comma-separated case ids and/or categories to run (e.g. complaint,unknown-04)."
+    )
     p_eval.set_defaults(func=cmd_eval)
 
     p_check = subparsers.add_parser("check-llm", help="Verify the LLM endpoint works.")
