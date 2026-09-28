@@ -107,7 +107,7 @@ def test_wrong_amount_gets_one_correction_then_succeeds():
             text_response("Sorry, your total is ₹3,850."),
         ]
     )
-    result = agent.handle("c1", "total please")
+    result = agent.handle("c1", "2 kg kaju katli and one GBL, delivered 5 km away, total please")
     assert "3,850" in result.reply
     assert "3,580" not in result.reply
     assert result.usage["model_calls"] == 3
@@ -122,7 +122,7 @@ def test_wrong_amount_twice_falls_back_to_quote_template():
             text_response("Your total is ₹4,200."),
         ]
     )
-    result = agent.handle("c1", "total please")
+    result = agent.handle("c1", "2 kg kaju katli and one GBL, delivered 5 km away, total please")
     assert "3,850" in result.reply
     for bad in ("3,580", "4,000", "4,200"):
         assert bad not in result.reply

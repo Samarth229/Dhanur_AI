@@ -178,6 +178,24 @@ def _resolve_item(
     return next(iter(matched_families.values())), None
 
 
+def resolve_item(
+    item_text: str, kb: KnowledgeBase, settings_obj: Settings
+) -> tuple[ProductFamily, Product | None]:
+    """Public wrapper around item resolution, for callers (e.g. the tools
+    layer's argument grounding) that need to know what an item string
+    refers to without pricing an order."""
+    return _resolve_item(item_text, kb, settings_obj)
+
+
+def family_lexicon_aliases(family: ProductFamily, settings_obj: Settings) -> set[str]:
+    """All normalized lexicon aliases for every SKU in a family."""
+    lexicon = _load_lexicon_products(settings_obj.paths.lexicon)
+    aliases: set[str] = set()
+    for product in family.products:
+        aliases.update(lexicon.get(product.sku, []))
+    return aliases
+
+
 def _disambiguate_by_size(
     matched_families: dict[str, ProductFamily],
     item_words: frozenset[str],

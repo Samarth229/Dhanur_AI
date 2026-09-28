@@ -279,7 +279,9 @@ def test_calculate_order_success_no_action_and_allowed_amounts():
             ],
             "distance_km": 5,
         },
-        make_ctx(),
+        make_ctx(
+            customer_messages=["2 kg kaju katli and one large gift box, delivered 5 km away, total?"]
+        ),
     )
     assert result.ok is True
     assert result.action is None
@@ -390,3 +392,119 @@ def test_lead_04_invalid_phone_still_rejected_by_format_not_grounding():
         make_ctx(customer_messages=["Wedding order for 200 guests. My name is Rohit Sharma, phone 12345."]),
     )
     assert result.ok is False
+
+
+# ---------------------------------------------------------------------------
+# Fix 9: calculate_order argument grounding
+# ---------------------------------------------------------------------------
+
+
+def test_item_grounding_rejects_unmentioned_item():
+    # The hinglish-04 scenario: a pure policy question, no items mentioned,
+    # but the model invents items to price.
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "Mixed Namkeen", "amount": 10, "unit": "pack"}]},
+        make_ctx(customer_messages=["7000 ke order pe cash on delivery milega kya?"]),
+    )
+    assert result.ok is False
+    assert "did not ask for" in result.content
+
+
+def test_item_grounding_passes_for_mentioned_item():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "kaju katli", "amount": 2, "unit": "kg"}]},
+        make_ctx(customer_messages=["2 kg kaju katli please"]),
+    )
+    assert result.ok is True
+
+
+def test_item_grounding_passes_across_turns():
+    # arith-12-style: item named in an earlier turn, referenced as "that" later.
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "KKSF-500", "amount": 3, "unit": "pack"}]},
+        make_ctx(
+            customer_messages=[
+                "Do you have sugar-free kaju katli?",
+                "Great, give me 3 packs of that.",
+            ]
+        ),
+    )
+    assert result.ok is True
+
+
+def test_item_grounding_accepts_literal_sku_mention():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "GBL", "amount": 1, "unit": "box"}]},
+        make_ctx(customer_messages=["I want one GBL"]),
+    )
+    assert result.ok is True
+
+
+def test_distance_grounding_rejects_missing_distance():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}]},
+        make_ctx(customer_messages=["1 kg kaju katli delivered 5 km away"]),
+    )
+    assert result.ok is False
+    assert "5 km" in result.content
+
+
+def test_distance_grounding_rejects_wrong_distance():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}], "distance_km": 3},
+        make_ctx(customer_messages=["1 kg kaju katli delivered 5 km away"]),
+    )
+    assert result.ok is False
+    assert "5 km" in result.content
+
+
+def test_distance_grounding_passes_for_correct_distance():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}], "distance_km": 5},
+        make_ctx(customer_messages=["1 kg kaju katli delivered 5 km away"]),
+    )
+    assert result.ok is True
+
+
+def test_distance_grounding_silent_when_not_mentioned():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}]},
+        make_ctx(customer_messages=["1 kg kaju katli please"]),
+    )
+    assert result.ok is True
+
+
+HINDI_06_MESSAGES = [
+    "रसमलाई की कीमत क्या है?",
+    "2 पैक चाहिए, 4 किलोमीटर दूर भेज दीजिए।",
+]
+
+
+def test_unit_grounding_rejects_kg_for_pack_quantity():
+    # The hindi-06 scenario: "2 पैक" (2 packs) sent as unit=kg.
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "rasmalai", "amount": 2, "unit": "kg"}], "distance_km": 4},
+        make_ctx(customer_messages=HINDI_06_MESSAGES),
+    )
+    assert result.ok is False
+    assert "packs" in result.content
+    assert "'pack'" in result.content
+
+
+def test_unit_grounding_passes_when_pack_used():
+    result = execute_tool(
+        "calculate_order",
+        {"items": [{"item": "rasmalai", "amount": 2, "unit": "pack"}], "distance_km": 4},
+        make_ctx(customer_messages=HINDI_06_MESSAGES),
+    )
+    assert result.ok is True
+    assert result.data.grand_total == 740

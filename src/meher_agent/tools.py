@@ -16,8 +16,9 @@ import re
 
 from meher_agent.config import Settings
 from meher_agent.knowledge import KnowledgeBase
-from meher_agent.pricing import PricingError, quote_order
+from meher_agent.pricing import PricingError, family_lexicon_aliases, quote_order, resolve_item
 from meher_agent.privacy import find_emails, find_phones
+from meher_agent.retrieval import normalize as normalize_for_matching
 from meher_agent.stores import EscalationStore, LeadStore
 from meher_agent.validation import (
     ValidationError,
@@ -29,6 +30,12 @@ from meher_agent.validation import (
 
 _DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 _NAME_TOKEN_RE = re.compile(r"[^\W\d_]+", re.UNICODE)
+_DISTANCE_MENTION_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:km|kilometre|kilometer|किलोमीटर)", re.IGNORECASE
+)
+_PACK_MENTION_RE = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:pack|packet|पैक|dabba)", re.IGNORECASE
+)
 
 logger = logging.getLogger(__name__)
 
@@ -194,10 +201,45 @@ def _parse_raw_arguments(raw_arguments: str | dict) -> dict[str, Any]:
     return parsed
 
 
+def _customer_text(ctx: ToolContext) -> str:
+    return normalize_for_matching(" ".join(ctx.customer_messages))
+
+
+def _item_grounded(item_name: str, ctx: ToolContext) -> bool:
+    """Fix 9a: the resolved product's family must have at least one alias
+    (or, if the customer typed a SKU directly, that SKU) the customer
+    actually said somewhere in this conversation."""
+    try:
+        family, _ = resolve_item(item_name, ctx.kb, ctx.settings)
+    except PricingError:
+        return True  # NOT_ON_MENU/AMBIGUOUS are reported separately by quote_order itself.
+    aliases = family_lexicon_aliases(family, ctx.settings)
+    customer_text = _customer_text(ctx)
+    if any(alias and alias in customer_text for alias in aliases):
+        return True
+    raw_customer_text = " ".join(ctx.customer_messages).upper()
+    return any(product.sku.upper() in raw_customer_text for product in family.products)
+
+
+def _mentioned_distance_km(ctx: ToolContext) -> float | None:
+    """Fix 9b: the last distance (in km) the customer actually stated."""
+    matches = _DISTANCE_MENTION_RE.findall(" ".join(ctx.customer_messages))
+    return float(matches[-1]) if matches else None
+
+
+def _mentioned_pack_quantities(ctx: ToolContext) -> set[float]:
+    """Fix 9c: quantities the customer attached to a pack word (पैक/pack/
+    packet/dabba), e.g. "2 पैक" -> {2.0}."""
+    matches = _PACK_MENTION_RE.findall(" ".join(ctx.customer_messages))
+    return {float(m) for m in matches}
+
+
 def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     items_raw = args.get("items")
     if not isinstance(items_raw, list) or not items_raw:
         raise ToolArgumentError("items must be a non-empty list of {item, amount, unit}.")
+
+    pack_quantities = _mentioned_pack_quantities(ctx)
 
     items = []
     for entry in items_raw:
@@ -213,6 +255,17 @@ def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResul
         unit = _clean_optional(entry.get("unit"))
         if not unit:
             raise ToolArgumentError("each item needs a 'unit'.")
+
+        if not _item_grounded(item_name, ctx):
+            raise ToolArgumentError(
+                f"the customer did not ask for {item_name}. Only price items the customer asked for."
+            )
+
+        if unit.strip().lower() in {"kg", "g"} and amount in pack_quantities:
+            raise ToolArgumentError(
+                f"the customer asked for {amount:g} packs; use unit 'pack', not '{unit}'."
+            )
+
         items.append({"item": item_name, "amount": amount, "unit": unit})
 
     distance_km = _clean_optional(args.get("distance_km"))
@@ -221,6 +274,13 @@ def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResul
             distance_km = float(distance_km)
         except (TypeError, ValueError):
             raise ToolArgumentError(f"distance_km must be a number, got {distance_km!r}.")
+
+    mentioned_distance = _mentioned_distance_km(ctx)
+    if mentioned_distance is not None and distance_km != mentioned_distance:
+        raise ToolArgumentError(
+            f"the customer said delivery is {mentioned_distance:g} km away; use "
+            f"distance_km={mentioned_distance:g}."
+        )
 
     delivery_date = _clean_optional(args.get("delivery_date"))
     if delivery_date is not None:
