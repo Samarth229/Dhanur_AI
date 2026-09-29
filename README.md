@@ -5,6 +5,8 @@ It answers price/order/delivery/policy questions in English, Hindi or Hinglish, 
 
 ## Setup
 
+**Prerequisites:** Python 3.11+ and [Ollama](https://ollama.com) installed.
+
 ```powershell
 python -m venv .venv
 .venv\Scripts\activate
