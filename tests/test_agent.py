@@ -346,7 +346,7 @@ def test_calc_nudge_forces_calculate_order_for_total_request():
         [
             text_response("The total for 2 kg kaju katli would be Rs 2500."),
             tool_response("calculate_order", {"items": [{"item": "kaju katli", "amount": 2, "unit": "kg"}]}),
-            text_response("The total for 2 kg kaju katli is Rs 2,400."),
+            text_response("2 kg kaju katli ka total Rs 2,400 hai."),
         ]
     )
     result = agent.handle("c1", "2 kg kaju katli total kitna hoga?")
@@ -369,7 +369,7 @@ def test_no_calc_nudge_for_bare_number():
     # The hinglish-04 scenario: "7000" is a rupee amount reference, not a
     # product quantity -- must not force a calculate_order call.
     agent = make_agent(
-        [text_response("Cash on delivery only for orders up to Rs 5,000. Use UPI or card instead.")]
+        [text_response("Cash on delivery sirf Rs 5,000 tak ke order ke liye hai. UPI ya card use karein.")]
     )
     result = agent.handle("c1", "7000 ke order pe cash on delivery milega kya?")
     assert result.usage["model_calls"] == 1
@@ -477,3 +477,42 @@ def test_invalid_contact_safety_net_silent_on_success():
     )
     result = agent.handle("c1", "Wedding order, I'm Amit, amit@example.com")
     assert "10-digit" not in result.reply.lower()
+
+
+# ---------------------------------------------------------------------------
+# Language-match guard
+# ---------------------------------------------------------------------------
+
+
+def test_language_guard_retries_english_reply_to_hinglish_message():
+    agent = make_agent(
+        [
+            text_response("Yes, we deliver within 12 km."),
+            text_response("Haan, hum 12 km ke andar delivery karte hain."),
+        ]
+    )
+    result = agent.handle("c1", "Bhaiya kya aap 12 km door delivery karte ho?")
+    assert "12 km" in result.reply
+    assert "hum" in result.reply or "karte" in result.reply
+    assert result.usage["model_calls"] == 2
+
+
+def test_language_guard_does_not_retry_english_reply_to_english_message():
+    agent = make_agent([text_response("We are open every day, 9 am to 10 pm.")])
+    result = agent.handle("c1", "What are your hours?")
+    assert result.usage["model_calls"] == 1
+    assert "9 am to 10 pm" in result.reply
+
+
+def test_language_guard_keeps_reply_after_retry_budget_exhausted():
+    agent = make_agent(
+        [
+            text_response("We are open every day from 9 am to 10 pm."),
+            text_response("We are open daily, 9 am to 10 pm."),
+            text_response("Open daily from 9 am to 10 pm."),
+            text_response("We're open daily, 9 am to 10 pm."),
+        ]
+    )
+    result = agent.handle("c1", "आप कितने बजे बंद करते हैं?")
+    assert "9 am to 10 pm" in result.reply
+    assert result.usage["model_calls"] == 4

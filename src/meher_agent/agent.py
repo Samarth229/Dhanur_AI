@@ -123,7 +123,9 @@ def _mentions_quantity(message: str, settings_obj: Settings) -> bool:
     return False
 
 
-def _build_correction_message(problems: list[str], allowed_amounts: set[float], settings: Settings) -> str:
+def _build_correction_message(
+    problems: list[str], allowed_amounts: set[float], settings: Settings, language: str = "en"
+) -> str:
     parts = []
     for problem in problems:
         if problem.startswith("disallowed amount"):
@@ -152,6 +154,11 @@ def _build_correction_message(problems: list[str], allowed_amounts: set[float], 
             )
         elif problem == "calc_nudge":
             parts.append("Call calculate_order for this total; do not compute it yourself.")
+        elif problem.startswith("reply language mismatch"):
+            language_name = {"hi": "Hindi using Devanagari script", "hinglish": "Hinglish"}.get(
+                language, language
+            )
+            parts.append(f"Reply again in {language_name}, keeping the same facts and amounts.")
     return " ".join(parts) if parts else "Please rewrite your reply."
 
 
@@ -292,6 +299,7 @@ class Agent:
                     conversation_allowed,
                     self.settings,
                     disclosure=disclosure_text,
+                    customer_language=language,
                 )
                 problems = list(guard_result.problems)
 
@@ -325,11 +333,22 @@ class Agent:
 
                 if model_calls < max_calls:
                     messages.append({"role": "assistant", "content": text})
-                    correction = _build_correction_message(problems, conversation_allowed, self.settings)
+                    correction = _build_correction_message(
+                        problems, conversation_allowed, self.settings, language
+                    )
                     messages.append({"role": "system", "content": correction})
                     continue
 
-                final_reply_text = _fallback_reply(problems, quote_for_fallback, language, self.settings)
+                language_only_failure = problems and all(
+                    p.startswith("reply language mismatch") for p in problems
+                )
+                if language_only_failure:
+                    # The retry budget is spent, but a language-only mismatch
+                    # isn't worth a generic fallback template -- keep the
+                    # model's own (fact-correct) reply as-is.
+                    final_reply_text = guard_result.cleaned_text
+                else:
+                    final_reply_text = _fallback_reply(problems, quote_for_fallback, language, self.settings)
                 break
         except LLMUnavailable:
             result = execute_tool("escalate", {"reason": "LLM unavailable"}, ctx)

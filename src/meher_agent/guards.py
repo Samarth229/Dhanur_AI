@@ -10,7 +10,7 @@ from meher_agent.amounts import extract_rupee_amounts_strict
 from meher_agent.canary import CANARY
 from meher_agent.config import Settings
 from meher_agent.knowledge import KnowledgeBase
-from meher_agent.language import normalize_digits
+from meher_agent.language import detect_language, normalize_digits
 from meher_agent.privacy import find_emails, find_phones
 from meher_agent.retrieval import Hit, load_lexicon
 from meher_agent.retrieval import normalize as normalize_for_matching
@@ -19,6 +19,7 @@ _PERCENT_RE = re.compile(
     r"(\d+(?:\.\d+)?)\s*(?:%|percent|per cent|प्रतिशत|pratishat)",
     re.IGNORECASE,
 )
+_DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 
 
 def base_allowed_amounts(kb: KnowledgeBase, settings: Settings) -> set[float]:
@@ -44,6 +45,7 @@ def check_reply(
     *,
     support_email: str = "orders@meher-sweets.example",
     disclosure: str = "",
+    customer_language: str = "en",
 ) -> GuardResult:
     problems: list[str] = []
     cleaned = normalize_digits(text)
@@ -75,6 +77,13 @@ def check_reply(
     # 6. Empty-after-cleaning guard.
     if not cleaned.strip():
         problems.append("reply is empty")
+
+    # 8. Language-match guard: the reply must actually be in the customer's
+    # detected language, not just avoid disallowed content.
+    if customer_language == "hi" and not _DEVANAGARI_RE.search(cleaned):
+        problems.append("reply language mismatch: expected Hindi (Devanagari), got none")
+    elif customer_language == "hinglish" and detect_language(cleaned, settings_obj=settings) == "en":
+        problems.append("reply language mismatch: expected Hinglish, got English")
 
     # 7. Length trim (never fails the guard, just trims).
     max_chars = settings.reply.max_chars
