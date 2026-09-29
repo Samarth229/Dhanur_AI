@@ -44,6 +44,8 @@ python manage.py run
 
 It listens on `http://127.0.0.1:8000` by default (host/port from `config.toml`). Use `python manage.py run --reload` for auto-reload during development.
 
+Open http://127.0.0.1:8000/ for the chat page.
+
 **PowerShell:**
 
 ```powershell

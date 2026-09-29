@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Meher Sweets: AI Assistant</title>
+<style>
+  :root {
+    --font: "Nirmala UI", "Noto Sans Devanagari", -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --bg: #f7f4ef;
+    --header-bg: #7a1f2b;
+    --header-fg: #ffffff;
+    --bubble-user: #d9ecff;
+    --bubble-bot: #ffffff;
+    --border: #ddd6cc;
+    --grey: #6b6b6b;
+    --green: #2e7d32;
+    --orange: #c76b1a;
+    --red: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    font-family: var(--font);
+    background: var(--bg);
+    color: #222;
+  }
+  body { display: flex; flex-direction: column; }
+
+  header {
+    background: var(--header-bg);
+    color: var(--header-fg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    flex-shrink: 0;
+  }
+  header h1 { font-size: 1.05rem; margin: 0; font-weight: 600; }
+  #newChatBtn {
+    background: rgba(255,255,255,0.15);
+    color: var(--header-fg);
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  #newChatBtn:hover { background: rgba(255,255,255,0.28); }
+
+  #messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .bubble-row { display: flex; }
+  .bubble-row.user { justify-content: flex-end; }
+  .bubble-row.bot { justify-content: flex-start; }
+
+  .bubble {
+    max-width: 80%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .bubble.user { background: var(--bubble-user); border-bottom-right-radius: 2px; }
+  .bubble.bot { background: var(--bubble-bot); border-bottom-left-radius: 2px; }
+  .bubble.error { background: #fdecea; border-color: #f5c6c2; color: var(--red); }
+
+  .meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+  .tag {
+    font-size: 0.72rem;
+    background: #ece7dd;
+    color: var(--grey);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+
+  .badge {
+    font-size: 0.72rem;
+    color: #fff;
+    border-radius: 999px;
+    padding: 2px 8px;
+    cursor: default;
+  }
+  .badge.save_lead { background: var(--green); }
+  .badge.escalate { background: var(--orange); }
+
+  .handoff-banner {
+    background: #fdecea;
+    color: var(--red);
+    border: 1px solid #f5c6c2;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+
+  .usage-line {
+    font-size: 0.7rem;
+    color: var(--grey);
+    margin-top: 6px;
+  }
+
+  .typing {
+    font-size: 0.85rem;
+    color: var(--grey);
+    font-style: italic;
+    padding: 0 16px 8px;
+  }
+
+  #chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 0 16px 8px;
+  }
+  .chip {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+  .chip:hover { background: #f0ebe1; }
+
+  #inputBar {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    background: #fff;
+    flex-shrink: 0;
+  }
+  #messageInput {
+    flex: 1;
+    resize: none;
+    font-family: var(--font);
+    font-size: 0.95rem;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 120px;
+  }
+  #sendBtn {
+    background: var(--header-bg);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 0 18px;
+    font-size: 0.95rem;
+    cursor: pointer;
+  }
+  #sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  @media (max-width: 480px) {
+    .bubble { max-width: 92%; }
+    header h1 { font-size: 0.95rem; }
+  }
+</style>
+</head>
+<body>
+  <header>
+    <h1>Meher Sweets: AI Assistant</h1>
+    <button id="newChatBtn" type="button">New chat</button>
+  </header>
+
+  <div id="messages"></div>
+  <div id="typingIndicator" class="typing" hidden>typing&hellip;</div>
+
+  <div id="chips">
+    <button class="chip" type="button" data-msg="How much is 500 g sugar-free kaju katli?">How much is 500 g sugar-free kaju katli?</button>
+    <button class="chip" type="button" data-msg="&#2310;&#2346; &#2325;&#2367;&#2340;&#2344;&#2375; &#2348;&#2332;&#2375; &#2348;&#2306;&#2342; &#2361;&#2379;&#2340;&#2375; &#2361;&#2376;&#2306;&#2404;">&#2310;&#2346; &#2325;&#2367;&#2340;&#2344;&#2375; &#2348;&#2332;&#2375; &#2348;&#2306;&#2342; &#2361;&#2379;&#2340;&#2375; &#2361;&#2376;&#2306;&#2404;</button>
+    <button class="chip" type="button" data-msg="Bhaiya 60 small gift box chahiye, kitna padega?">Bhaiya 60 small gift box chahiye, kitna padega?</button>
+  </div>
+
+  <div id="inputBar">
+    <textarea id="messageInput" rows="1" placeholder="Type a message..."></textarea>
+    <button id="sendBtn" type="button">Send</button>
+  </div>
+
+<script>
+(function () {
+  "use strict";
+
+  function newConversationId() {
+    return "web-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+  }
+
+  var state = { conversationId: newConversationId() };
+
+  var messagesEl = document.getElementById("messages");
+  var inputEl = document.getElementById("messageInput");
+  var sendBtn = document.getElementById("sendBtn");
+  var typingEl = document.getElementById("typingIndicator");
+  var newChatBtn = document.getElementById("newChatBtn");
+
+  function scrollToBottom() {
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function addUserBubble(text) {
+    var row = document.createElement("div");
+    row.className = "bubble-row user";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble user";
+    bubble.appendChild(document.createTextNode(text));
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addErrorBubble(text) {
+    var row = document.createElement("div");
+    row.className = "bubble-row bot";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble error";
+    bubble.appendChild(document.createTextNode(text));
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function addBotBubble(data) {
+    var row = document.createElement("div");
+    row.className = "bubble-row bot";
+    var bubble = document.createElement("div");
+    bubble.className = "bubble bot";
+
+    bubble.appendChild(document.createTextNode(data.reply || ""));
+
+    var sources = data.sources || [];
+    var actions = data.actions || [];
+    if (sources.length || actions.length) {
+      var metaRow = document.createElement("div");
+      metaRow.className = "meta-row";
+
+      sources.forEach(function (src) {
+        var tag = document.createElement("span");
+        tag.className = "tag";
+        tag.appendChild(document.createTextNode(src));
+        metaRow.appendChild(tag);
+      });
+
+      actions.forEach(function (action) {
+        var badge = document.createElement("span");
+        var type = String(action.type || "action");
+        badge.className = "badge " + type;
+        badge.appendChild(document.createTextNode(type));
+        try {
+          badge.title = JSON.stringify(action.args || {});
+        } catch (e) {
+          badge.title = "";
+        }
+        metaRow.appendChild(badge);
+      });
+
+      bubble.appendChild(metaRow);
+    }
+
+    if (data.handoff) {
+      var banner = document.createElement("div");
+      banner.className = "handoff-banner";
+      banner.appendChild(document.createTextNode("Handed over to the team"));
+      bubble.appendChild(banner);
+    }
+
+    var usage = data.usage || {};
+    if (usage.latency_ms !== undefined || usage.model_calls !== undefined) {
+      var usageLine = document.createElement("div");
+      usageLine.className = "usage-line";
+      var latency = usage.latency_ms !== undefined ? Math.round(usage.latency_ms) + " ms" : "?";
+      var calls = usage.model_calls !== undefined ? usage.model_calls : "?";
+      usageLine.appendChild(document.createTextNode(latency + " · " + calls + " model call(s)"));
+      bubble.appendChild(usageLine);
+    }
+
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function setBusy(busy) {
+    sendBtn.disabled = busy;
+    inputEl.disabled = busy;
+    typingEl.hidden = !busy;
+  }
+
+  function sendMessage(text) {
+    text = text.trim();
+    if (!text) return;
+
+    addUserBubble(text);
+    inputEl.value = "";
+    autoResize();
+    setBusy(true);
+
+    fetch("/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: state.conversationId, message: text })
+    })
+      .then(function (resp) {
+        if (!resp.ok) {
+          throw new Error("Server returned " + resp.status);
+        }
+        return resp.json();
+      })
+      .then(function (data) {
+        addBotBubble(data);
+      })
+      .catch(function () {
+        addErrorBubble("Sorry, something went wrong reaching the server. Please try again.");
+      })
+      .finally(function () {
+        setBusy(false);
+        inputEl.focus();
+      });
+  }
+
+  function autoResize() {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
+  }
+
+  sendBtn.addEventListener("click", function () {
+    sendMessage(inputEl.value);
+  });
+
+  inputEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(inputEl.value);
+    }
+  });
+
+  inputEl.addEventListener("input", autoResize);
+
+  newChatBtn.addEventListener("click", function () {
+    state.conversationId = newConversationId();
+    messagesEl.textContent = "";
+  });
+
+  document.querySelectorAll(".chip").forEach(function (chip) {
+    chip.addEventListener("click", function () {
+      sendMessage(chip.getAttribute("data-msg"));
+    });
+  });
+
+  inputEl.focus();
+})();
+</script>
+</body>
+</html>

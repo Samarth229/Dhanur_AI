@@ -10,10 +10,11 @@ import sys
 import threading
 import time
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from meher_agent.agent import Agent
@@ -24,6 +25,7 @@ from meher_agent.logging_setup import setup_logging
 logger = logging.getLogger(__name__)
 
 _CONVERSATION_ID_RE = r"^[A-Za-z0-9_-]{1,100}$"
+_CHAT_PAGE_PATH = Path(__file__).resolve().parent / "static" / "chat.html"
 
 
 class ChatRequest(BaseModel):
@@ -128,6 +130,10 @@ def create_app(settings: Settings | None = None, agent: Agent | None = None) -> 
             handoff=result.handoff,
             usage=usage,
         )
+
+    @app.get("/")
+    def chat_page() -> FileResponse:
+        return FileResponse(_CHAT_PAGE_PATH, media_type="text/html")
 
     @app.get("/leads")
     def leads() -> list[dict[str, Any]]:
