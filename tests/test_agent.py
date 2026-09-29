@@ -520,6 +520,26 @@ def test_language_guard_does_not_retry_english_reply_to_english_message():
     assert "9 am to 10 pm" in result.reply
 
 
+def test_language_guard_retry_followed_by_tool_calls_never_handoffs():
+    # Hotfix (turn 3 of the manual chat-page transcript): a language-only
+    # guard failure on an early attempt, followed by the model burning the
+    # rest of its budget on tool calls that never produce a fresh accepted
+    # reply, must still resolve to the earlier factual (if wrong-language)
+    # reply -- never the step-limit escalate/handoff template.
+    agent = make_agent(
+        [
+            text_response("Yes, we deliver within 12 km."),
+            tool_response("calculate_order", {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}]}, call_id="c1"),
+            tool_response("calculate_order", {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}]}, call_id="c2"),
+            tool_response("calculate_order", {"items": [{"item": "kaju katli", "amount": 1, "unit": "kg"}]}, call_id="c3"),
+        ]
+    )
+    result = agent.handle("c1", "Bhaiya kya aap 12 km door delivery karte ho?")
+    assert result.handoff is False
+    assert "12 km" in result.reply
+    assert result.usage["model_calls"] == 4
+
+
 def test_language_guard_keeps_reply_after_retry_budget_exhausted():
     agent = make_agent(
         [

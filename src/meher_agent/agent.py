@@ -244,6 +244,7 @@ class Agent:
         completion_tokens = 0
         estimated = False
         final_reply_text: str | None = None
+        last_language_only_text: str | None = None
         max_calls = self.settings.llm.max_model_calls
         calculate_order_called_this_turn = False
         save_lead_failed_this_turn = False
@@ -336,6 +337,16 @@ class Agent:
                     final_reply_text = guard_result.cleaned_text
                     break
 
+                language_only_failure = problems and all(
+                    p.startswith("reply language mismatch") for p in problems
+                )
+                if language_only_failure:
+                    # Not accepted outright (still the wrong language), but
+                    # it's the best factual reply we have so far -- keep it
+                    # in reserve so a later tool-call attempt that burns the
+                    # rest of the budget can't turn this into a handoff.
+                    last_language_only_text = guard_result.cleaned_text
+
                 if model_calls < max_calls:
                     messages.append({"role": "assistant", "content": text})
                     correction = _build_correction_message(
@@ -344,9 +355,6 @@ class Agent:
                     messages.append({"role": "system", "content": correction})
                     continue
 
-                language_only_failure = problems and all(
-                    p.startswith("reply language mismatch") for p in problems
-                )
                 if language_only_failure:
                     # The retry budget is spent, but a language-only mismatch
                     # isn't worth a generic fallback template -- keep the
@@ -361,6 +369,12 @@ class Agent:
                 actions.append(result.action)
             handoff = True
             final_reply_text = get_template("llm_down", language, self.settings)
+
+        if final_reply_text is None and last_language_only_text is not None:
+            # The budget ran out on a tool call after an earlier attempt had
+            # already produced a factually fine reply that only missed the
+            # customer's language -- that's still not worth a handoff.
+            final_reply_text = last_language_only_text
 
         if final_reply_text is None:
             result = execute_tool("escalate", {"reason": "step limit reached"}, ctx)
