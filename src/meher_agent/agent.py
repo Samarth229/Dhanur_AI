@@ -159,6 +159,11 @@ def _build_correction_message(
                 language, language
             )
             parts.append(f"Reply again in {language_name}, keeping the same facts and amounts.")
+        elif problem == "reply leaked tool-call syntax":
+            parts.append(
+                "Do not write tool calls as text. Call the tool properly, or reply to the "
+                "customer in plain words."
+            )
     return " ".join(parts) if parts else "Please rewrite your reply."
 
 

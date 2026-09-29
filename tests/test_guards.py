@@ -143,6 +143,31 @@ def test_lead_updated_parrot_prefix_stripped():
     assert not result.cleaned_text.lower().startswith("lead updated")
 
 
+def test_tool_leak_guard_catches_hindi_06_style_leak():
+    leaky = (
+        'लेकिन आपको 2 पैक चाहिए। ordinal "calculate_order" को इस प्रकार संशोधित करें: '
+        '{"delivery_date":"2026-09-29","distance_km":4,"items":[{"amount":2,"item":"Rasmalai","unit":"pack"}]}'
+    )
+    result = check_reply(leaky, BASE_ALLOWED, SETTINGS)
+    assert result.ok is False
+    assert any(p == "reply leaked tool-call syntax" for p in result.problems)
+
+
+def test_tool_leak_guard_catches_bare_tool_name():
+    result = check_reply("Let me call save_lead with your details.", BASE_ALLOWED, SETTINGS)
+    assert result.ok is False
+    assert any(p == "reply leaked tool-call syntax" for p in result.problems)
+
+
+def test_tool_leak_guard_does_not_flag_normal_delivery_units_reply():
+    normal = (
+        "Delivery charges depend on the distance in kilometers, and each sweet is priced "
+        "per unit weight -- 1 kg or 500 g packs are available."
+    )
+    result = check_reply(normal, BASE_ALLOWED, SETTINGS)
+    assert result.ok is True
+
+
 def test_language_guard_fires_for_turn_13_hotfix_message():
     # Regression test for turn 13 of the manual chat-page hotfix transcript
     # ("Bhaiya 2 kilo kaju katli aur 20 samose, 5 km door. Total kitna?"):

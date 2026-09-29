@@ -21,6 +21,8 @@ _PERCENT_RE = re.compile(
 )
 _DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
 _LEAD_PARROT_RE = re.compile(r"^\s*Lead\s+(?:saved|updated)\.\s*", re.IGNORECASE)
+_TOOL_NAME_RE = re.compile(r"\b(calculate_order|save_lead|escalate)\b", re.IGNORECASE)
+_TOOL_ARG_KEY_RE = re.compile(r'"(items|distance_km|delivery_date|unit)"\s*:')
 
 
 def base_allowed_amounts(kb: KnowledgeBase, settings: Settings) -> set[float]:
@@ -79,6 +81,13 @@ def check_reply(
     # 6. Empty-after-cleaning guard.
     if not cleaned.strip():
         problems.append("reply is empty")
+
+    # 9. Tool-call leak guard: the model sometimes writes its tool call (or
+    # a fragment of the tool-arguments JSON) as plain reply text instead of
+    # actually calling the tool -- found via manual testing (hindi-06's
+    # replies occasionally contained raw "calculate_order"/JSON-arg text).
+    if _TOOL_NAME_RE.search(cleaned) or _TOOL_ARG_KEY_RE.search(cleaned):
+        problems.append("reply leaked tool-call syntax")
 
     # 8. Language-match guard: the reply must actually be in the customer's
     # detected language, not just avoid disallowed content.
