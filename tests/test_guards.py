@@ -129,3 +129,36 @@ def test_build_sources_capped_at_max_sources():
 def test_build_sources_only_valid_ids():
     sources = build_sources("Nothing relevant here.", None, [], KB, SETTINGS, action_types=set())
     assert set(sources) <= KB.valid_source_ids
+
+
+def test_lead_parrot_prefix_stripped():
+    result = check_reply("Lead saved. The team will call you back.", BASE_ALLOWED, SETTINGS)
+    assert result.ok is True
+    assert not result.cleaned_text.lower().startswith("lead saved")
+    assert "The team will call you back." in result.cleaned_text
+
+
+def test_lead_updated_parrot_prefix_stripped():
+    result = check_reply("Lead updated. We'll be in touch.", BASE_ALLOWED, SETTINGS)
+    assert not result.cleaned_text.lower().startswith("lead updated")
+
+
+def test_language_guard_fires_for_turn_13_hotfix_message():
+    # Regression test for turn 13 of the manual chat-page hotfix transcript
+    # ("Bhaiya 2 kilo kaju katli aur 20 samose, 5 km door. Total kitna?"):
+    # a fully English reply to this exact Hinglish message must be flagged.
+    # Live evidence (scripts/replay_session.py) shows this already fires
+    # deterministically in the current code; kept as a regression guard --
+    # see the Fix 14 hotfix entry in reports/failure_log.md.
+    reply = (
+        "The total for 2 kg Kaju Katli and 20 Samosas is ₹2,800. Delivery is "
+        "free as it's within 5 km and the order is above ₹999."
+    )
+    result = check_reply(
+        reply,
+        BASE_ALLOWED | {2800.0},
+        SETTINGS,
+        customer_language="hinglish",
+    )
+    assert result.ok is False
+    assert any(p.startswith("reply language mismatch") for p in result.problems)

@@ -33,30 +33,51 @@ class Lead:
 class LeadStore:
     def __init__(self) -> None:
         self._lock = threading.Lock()
-        self._leads: dict[str, Lead] = {}
+        self._leads: dict[str, list[Lead]] = {}
 
     def upsert(self, conversation_id: str, fields: dict[str, Any]) -> tuple[Lead, bool]:
-        """Returns (lead, created). Merges non-empty fields into any existing lead."""
+        """Returns (lead, created).
+
+        A conversation can produce more than one lead (e.g. two different
+        people giving their own contact details in the same chat), so a new
+        save_lead call only merges into an existing lead when the name
+        matches (casefold) or the call gives no name at all -- a name that
+        does not match anything on file starts a new lead instead of
+        overwriting someone else's.
+        """
         with self._lock:
-            existing = self._leads.get(conversation_id)
-            if existing is None:
+            existing_leads = self._leads.setdefault(conversation_id, [])
+            new_name = fields.get("name")
+
+            match = None
+            if not new_name:
+                match = existing_leads[-1] if existing_leads else None
+            else:
+                new_name_cf = str(new_name).casefold()
+                for lead in existing_leads:
+                    if lead.name and lead.name.casefold() == new_name_cf:
+                        match = lead
+                        break
+
+            if match is None:
                 lead = Lead(conversation_id=conversation_id, **fields)
-                self._leads[conversation_id] = lead
+                existing_leads.append(lead)
                 return lead, True
 
             for key, value in fields.items():
                 if value is not None and value != "":
-                    setattr(existing, key, value)
-            existing.updated_at = _now_iso()
-            return existing, False
+                    setattr(match, key, value)
+            match.updated_at = _now_iso()
+            return match, False
 
     def get(self, conversation_id: str) -> Lead | None:
         with self._lock:
-            return self._leads.get(conversation_id)
+            leads = self._leads.get(conversation_id)
+            return leads[-1] if leads else None
 
     def list_masked(self) -> list[dict[str, Any]]:
         with self._lock:
-            leads = list(self._leads.values())
+            leads = [lead for leads in self._leads.values() for lead in leads]
         return [
             {
                 "name": lead.name,

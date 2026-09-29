@@ -51,6 +51,32 @@ def test_list_masked_exact_masking():
     assert "created_at" in entry
 
 
+def test_upsert_different_names_same_conversation_creates_two_leads():
+    # Hotfix (turns 15/16 of the manual chat-page transcript): two different
+    # people giving their own contact details in the same chat must produce
+    # two separate leads, not merge into one.
+    store = LeadStore()
+    lead1, created1 = store.upsert("conv-1", {"name": "Ritu Malhotra", "email": "ritu@example.com"})
+    lead2, created2 = store.upsert("conv-1", {"name": "Amit Verma", "phone": "9876543210"})
+    assert created1 is True
+    assert created2 is True
+    assert lead1 is not lead2
+    masked = store.list_masked()
+    assert len(masked) == 2
+    names = {m["name"] for m in masked}
+    assert names == {"Ritu Malhotra", "Amit Verma"}
+
+
+def test_upsert_same_name_twice_merges_into_one_lead():
+    store = LeadStore()
+    store.upsert("conv-1", {"name": "Amit Verma", "email": "amit@example.com"})
+    lead, created = store.upsert("conv-1", {"name": "amit verma", "phone": "9876543210"})
+    assert created is False
+    assert lead.email == "amit@example.com"
+    assert lead.phone == "9876543210"
+    assert len(store.list_masked()) == 1
+
+
 def test_list_masked_null_for_missing_contact_fields():
     store = LeadStore()
     store.upsert("conv-1", {"name": "Amit", "email": "amit@example.com"})

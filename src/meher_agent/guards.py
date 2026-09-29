@@ -20,6 +20,7 @@ _PERCENT_RE = re.compile(
     re.IGNORECASE,
 )
 _DEVANAGARI_RE = re.compile(r"[ऀ-ॿ]")
+_LEAD_PARROT_RE = re.compile(r"^\s*Lead\s+(?:saved|updated)\.\s*", re.IGNORECASE)
 
 
 def base_allowed_amounts(kb: KnowledgeBase, settings: Settings) -> set[float]:
@@ -49,6 +50,7 @@ def check_reply(
 ) -> GuardResult:
     problems: list[str] = []
     cleaned = normalize_digits(text)
+    cleaned = _LEAD_PARROT_RE.sub("", cleaned)
 
     # 1-2. Amount guard.
     found_amounts = extract_rupee_amounts_strict(cleaned)
