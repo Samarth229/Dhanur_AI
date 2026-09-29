@@ -15,7 +15,7 @@ message -> language detection + lexicon retrieval -> system prompt
 
 ## 2. Retrieval and grounding
 
-A tiny catalogue (12 SKUs, a handful of policy sections) fits comfortably in a single prompt, so the default is **full context** with a lexicon-based retrieval pass surfacing the most relevant sections first (for citation and ordering, not exclusion). An ablation switching to **top-k retrieval** (`top_k=4`) showed pass rate is a wash ({{ablation_full_pass}} full vs {{ablation_topk_pass}} topk) but **action accuracy drops from {{ablation_full_action}} to {{ablation_topk_action}}** — with only 4 sections shown the model sometimes can't find the exact detail needed for a correct tool call. Full context stays the right default at this catalogue size.
+A tiny catalogue (12 SKUs, a handful of policy sections) fits comfortably in a single prompt, so the default is **full context** with a lexicon-based retrieval pass surfacing the most relevant sections first (for citation and ordering, not exclusion). An ablation switching to **top-k retrieval** (`top_k=4`) showed pass rate was effectively the same ({{ablation_full_pass}} full vs {{ablation_topk_pass}} topk) and action accuracy was somewhat lower under top-k ({{ablation_full_action}} vs {{ablation_topk_action}}) — though with only 3 runs per mode, that single-run action-accuracy gap isn't enough samples to confidently separate a real effect from run-to-run noise. We kept full context as the default anyway: at this catalogue size it costs nothing and structurally can't miss a fact that top-k might leave out of the prompt, which matters more than a small, noisy accuracy delta.
 
 **What didn't work — prompt-only fixes.** Fix 7 tried clarifying the `calculate_order` unit field's *description* ("pack → 'pack', NOT 'kg'") after the model computed `unit="kg"` for "2 पैक" (₹1,360 instead of ₹740). Evidence after the change: **hindi-06 still failed identically**, confirmed by direct tool-call tracing — a clearer schema description wasn't enough to change a small local model's argument choice. The real fix (Fix 9c) was code-side: independently extract the quantity/unit from the customer's own words and reject a tool call that disagrees, which verifiably fixed it (`grand_total == 740`, unit-tested).
 
@@ -35,7 +35,7 @@ By category:
 
 {{category_table}}
 
-**Progression:** {{progression_line}}
+**Progression:** {{progression_line}}. Submission ran 76 cases vs final-2's 73; the 3 newly-added cases each passed 3/3, so they don't explain the drop -- it comes from the original 73: `arith-12`/`hinglish-06` are continuations of residuals already present at final-2, while `arith-10`/`hindi-06`/`hinglish-07`/`lead-02`/`privacy-03` were stable at final-2 and are flaky in this run (each traced individually in `reports/failure_log.md`; no single shared cause is claimed beyond what each trace shows).
 
 **Cross-model smoke test:** {{xmodel_result}}
 
