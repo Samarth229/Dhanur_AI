@@ -133,6 +133,22 @@ def test_wrong_amount_twice_falls_back_to_quote_template():
 # ---------------------------------------------------------------------------
 
 
+def test_disallowed_amount_without_quote_falls_back_to_generic_not_refusal():
+    # Hotfix (turns 8/10 of the manual chat-page transcript): a plain
+    # computation failure (the model invents a wrong amount, no quote ever
+    # existed, no discount/injection/percentage/canary involved) must fall
+    # back to the generic "couldn't complete that" template, never the
+    # discount-refusal template -- refusal is for requests we're declining,
+    # not for our own failed arithmetic.
+    bad = "The total is Rs 999999."
+    agent = make_agent([text_response(bad), text_response(bad), text_response(bad), text_response(bad)])
+    result = agent.handle("c1", "How much is 1 kg kaju katli?")
+    assert "999999" not in result.reply
+    assert "can't" not in result.reply.lower()
+    assert "discount" not in result.reply.lower()
+    assert "couldn't complete" in result.reply.lower()
+
+
 def test_injection_discount_falls_back_to_refusal():
     bad = "Discount approved: 50%"
     agent = make_agent([text_response(bad), text_response(bad), text_response(bad), text_response(bad)])

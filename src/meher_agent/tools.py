@@ -16,7 +16,7 @@ import re
 
 from meher_agent.config import Settings
 from meher_agent.knowledge import KnowledgeBase
-from meher_agent.pricing import PricingError, family_lexicon_aliases, quote_order, resolve_item
+from meher_agent.pricing import PricingError, _families, family_lexicon_aliases, quote_order, resolve_item
 from meher_agent.privacy import find_emails, find_phones
 from meher_agent.retrieval import normalize as normalize_for_matching
 from meher_agent.stores import EscalationStore, LeadStore
@@ -227,19 +227,48 @@ def _mentioned_distance_km(ctx: ToolContext) -> float | None:
     return float(matches[-1]) if matches else None
 
 
-def _mentioned_pack_quantities(ctx: ToolContext) -> set[float]:
+def _mentioned_pack_quantities_for_item(item_name: str, ctx: ToolContext) -> set[float]:
     """Fix 9c: quantities the customer attached to a pack word (पैक/pack/
-    packet/dabba), e.g. "2 पैक" -> {2.0}."""
-    matches = _PACK_MENTION_RE.findall(" ".join(ctx.customer_messages))
-    return {float(m) for m in matches}
+    packet/dabba) for THIS specific item, e.g. "2 पैक" -> {2.0}.
+
+    A pack number only counts if the message that mentions it doesn't also
+    mention a *different* product family -- otherwise "3 packs of soan
+    papdi" in one turn would wrongly block an unrelated later order of
+    "3 kg" of, say, motichoor laddoo just because both happen to use the
+    number 3 (found via manual multi-turn chat-page testing, turn 8/10 of
+    the hotfix transcript in reports/failure_log.md). The item name and its
+    pack quantity are still allowed to be split across separate turns
+    (e.g. "rasmalai?" then "2 pack chahiye"), as long as no other product
+    was named in between."""
+    try:
+        this_family, _ = resolve_item(item_name, ctx.kb, ctx.settings)
+    except PricingError:
+        this_family = None
+
+    other_aliases: set[str] = set()
+    if this_family is not None:
+        this_family_names = {this_family.name}
+    else:
+        this_family_names = set()
+    for family in _families(ctx.settings):
+        if family.name in this_family_names:
+            continue
+        other_aliases |= family_lexicon_aliases(family, ctx.settings)
+
+    matches: set[float] = set()
+    for msg in ctx.customer_messages:
+        normalized = normalize_for_matching(msg)
+        mentions_other_product = any(alias and alias in normalized for alias in other_aliases)
+        if mentions_other_product:
+            continue
+        matches.update(float(m) for m in _PACK_MENTION_RE.findall(msg))
+    return matches
 
 
 def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     items_raw = args.get("items")
     if not isinstance(items_raw, list) or not items_raw:
         raise ToolArgumentError("items must be a non-empty list of {item, amount, unit}.")
-
-    pack_quantities = _mentioned_pack_quantities(ctx)
 
     items = []
     for entry in items_raw:
@@ -261,6 +290,7 @@ def _handle_calculate_order(args: dict[str, Any], ctx: ToolContext) -> ToolResul
                 f"the customer did not ask for {item_name}. Only price items the customer asked for."
             )
 
+        pack_quantities = _mentioned_pack_quantities_for_item(item_name, ctx)
         if unit.strip().lower() in {"kg", "g"} and amount in pack_quantities:
             raise ToolArgumentError(
                 f"the customer asked for {amount:g} packs; use unit 'pack', not '{unit}'."
@@ -406,9 +436,9 @@ def _handle_save_lead(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
 
     policy = ctx.settings.policy
     content = (
-        f"Lead {status}. Tell the customer the team will call or email them back about this. "
-        "Do not say the order is confirmed. If it is a bulk order (more than "
-        f"{policy.bulk_sweets_kg_over:g} kg of sweets or more than {policy.bulk_giftboxes_over:g} "
+        f"Tell the customer: their details have been {status} and the team will call or email "
+        "them back about this. Do not say the order is confirmed. If it is a bulk order (more "
+        f"than {policy.bulk_sweets_kg_over:g} kg of sweets or more than {policy.bulk_giftboxes_over:g} "
         f"gift boxes), mention that it needs {policy.bulk_notice_days:g} days' notice and a "
         f"{policy.bulk_advance_pct:g}% advance."
     )
@@ -427,10 +457,10 @@ def _handle_escalate(args: dict[str, Any], ctx: ToolContext) -> ToolResult:
     ctx.escalation_store.add(ctx.conversation_id, reason)
 
     content = (
-        "Escalated to the team. Tell the customer, in their language, that the team "
-        "will get back to them by email within one working day. If this is about a "
-        "damaged delivery, ask them for a photo and note that damage must be "
-        "reported within 2 hours of delivery. Apologise once only."
+        "Tell the customer, in their language, that the team will get back to them "
+        "by email within one working day. If this is about a damaged delivery, ask "
+        "them for a photo and note that damage must be reported within 2 hours of "
+        "delivery. Apologise once only."
     )
     action = {"type": "escalate", "args": {"reason": reason}}
     return ToolResult(ok=True, name="escalate", content=content, action=action, handoff=True, data=None)

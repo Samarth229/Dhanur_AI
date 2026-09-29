@@ -444,6 +444,22 @@ def test_item_grounding_accepts_literal_sku_mention():
     assert result.ok is True
 
 
+def test_item_grounding_accepts_plural_and_variant_item_names():
+    # Hotfix: "samosas"/"samose" (already lexicon-covered) and "laddoos"
+    # (added to the lexicon by this fix) must all ground correctly.
+    for variant, message in [
+        ("samosas", "10 samosas please"),
+        ("samose", "10 samose chahiye"),
+        ("motichoor laddoos", "1 kg motichoor laddoos please"),
+    ]:
+        result = execute_tool(
+            "calculate_order",
+            {"items": [{"item": variant, "amount": 1, "unit": "kg" if "laddoo" in variant else "piece"}]},
+            make_ctx(customer_messages=[message]),
+        )
+        assert result.ok is True, f"{variant!r} should ground: {result.content}"
+
+
 def test_distance_grounding_rejects_missing_distance():
     result = execute_tool(
         "calculate_order",
@@ -508,3 +524,29 @@ def test_unit_grounding_passes_when_pack_used():
     )
     assert result.ok is True
     assert result.data.grand_total == 740
+
+
+def test_unit_grounding_ignores_pack_number_from_a_different_product():
+    # Hotfix (turns 8/10 of the manual chat-page transcript): the customer
+    # said "3 packs soan papdi" earlier, then later ordered "3 kg" of an
+    # unrelated product (motichoor laddoo). The earlier pack number must not
+    # leak into a completely different item's unit check just because the
+    # amount happens to match.
+    messages = [
+        "3 packs soan papdi and 2 mixed namkeen, 10 km away",
+        "What is the price of 1 kg motichoor laddoo?",
+        "Make it 3 kg and add 10 samosas, deliver 2 km. Total?",
+    ]
+    result = execute_tool(
+        "calculate_order",
+        {
+            "items": [
+                {"item": "motichoor laddoo", "amount": 3, "unit": "kg"},
+                {"item": "samosa", "amount": 10, "unit": "piece"},
+            ],
+            "distance_km": 2,
+        },
+        make_ctx(customer_messages=messages),
+    )
+    assert result.ok is True
+    assert result.data.grand_total == 1880

@@ -163,17 +163,20 @@ def _build_correction_message(
 
 
 def _fallback_reply(problems: list[str], quote, language: str, settings: Settings) -> str:
-    is_amount_or_injection = any(
-        p.startswith("disallowed amount") or p.startswith("disallowed percentage") or "canary" in p
-        for p in problems
-    )
     if quote is not None:
         lines = "\n".join(
             f"{line.item} {line.pack} × {line.packs} = ₹{line.line_total:,}" for line in quote.lines
         )
         total = f"₹{quote.grand_total:,}"
         return get_template("quote_fallback", language, settings, lines=lines, total=total)
-    if is_amount_or_injection:
+    # `refusal` is for the customer asking for something we can't give (an
+    # invented discount, a leaked percentage, a prompt-injection attempt) --
+    # not for "the model's own reply happened to contain a wrong amount",
+    # which is a computation failure, not a request we're declining.
+    is_percentage_or_injection = any(
+        p.startswith("disallowed percentage") or "canary" in p for p in problems
+    )
+    if is_percentage_or_injection:
         return get_template("refusal", language, settings)
     return get_template("generic_fallback", language, settings)
 
@@ -271,7 +274,9 @@ class Agent:
 
                     for tc in resp.tool_calls:
                         result = execute_tool(tc.name, tc.arguments, ctx)
-                        trace.append({"tool": tc.name, "ok": result.ok})
+                        trace.append(
+                            {"tool": tc.name, "ok": result.ok, "args": tc.arguments, "content": result.content}
+                        )
                         tool_msg = {"role": "tool", "tool_call_id": tc.id, "content": result.content}
                         messages.append(tool_msg)
                         turn_new_messages.append(tool_msg)
