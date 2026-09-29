@@ -60,7 +60,7 @@ def test_case_ids_unique():
 
 def test_every_case_loads_with_harness_loader():
     cases = load_cases(CASES_PATH)
-    assert len(cases) == 73
+    assert len(cases) == 76
     for case in cases:
         assert case.id
         assert case.category
