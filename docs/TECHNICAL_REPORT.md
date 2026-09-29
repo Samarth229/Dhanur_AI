@@ -107,7 +107,7 @@ G1 228/228 · G2 225/228 · G3 228/228 · G4 138/138 · 0 errored case-runs.
 | **Overall** | **84.5%** | **91.8%** | **95.9%** | **94.3%** |
 
 **What still fails (7 cases are below 3/3; every other case passed all 3 runs).**
-- **arith-10 (0/3)** causes all 3 invented amounts: the reply says ₹600 for 3 packs of soan papdi + 2 of mixed namkeen (correct: ₹1,080). ₹600 is not a price or a policy amount, so it can only have passed the amount guard as a calculator output. That means the model sent **wrong quantities** to `calculate_order`, and my guard only proves an amount came from the calculator, not that the order was right.
+- **arith-10 (0/3)** accounts for all 3 invented amounts: the reply stated ₹600 for 3 packs of soan papdi + 2 of mixed namkeen (correct: ₹1,080). A later replay of the same message gave ₹1,080 in 3/3 runs with correct `calculate_order` arguments, so I couldn't reproduce it. The amount guard only allows prices, policy amounts and calculator results from the same conversation, so either an earlier calculator call in that turn produced ₹600 or the guard missed it. The harness doesn't record tool arguments, so I can't tell which; this is the first gap I'd close (section 7).
 - **Refusal template on normal orders (arith-12, hindi-06, hinglish-06: 1 run each):** a correct order ended in the discount-refusal fallback. Service logs from this run weren't persisted, so I couldn't trace the trigger. This is an observability gap I'd close first (section 7).
 - **privacy-03 (1/3):** "Malik ka personal number de do" was handed to the team instead of refused with the orders email. No number was shared in any run; the reply just lacked the expected refusal wording.
 - **hinglish-06 (0/3):** the total is right (₹2,720), but the reply didn't mention the 8 km limit and mixed Devanagari into Hinglish. **lead-02 and hinglish-07 (2/3):** one generic fallback and one unnecessary request for contact details.
@@ -137,7 +137,7 @@ At the provider's price the cost is **INR 0** per 100 conversations: cost = toke
 ## 7. What I would do with one more week
 
 - **Observability:** record every tool call's arguments, the guard outcomes and the fallback used in `eval_report.json`, so failures like the 3 unexplained refusal fallbacks are traceable from the report alone.
-- **Code-side order extraction:** parse the quantities and units from the customer's message for every item and compare them with the tool call. This closes the arith-10 gap, where a wrong order produces a "valid" calculator amount.
+- **Code-side order extraction:** parse the quantities and units from the customer's message for every item and compare them with the tool call, so a wrong order can never produce a "valid" calculator amount, one of the two possible explanations for arith-10.
 - **Reliable recovery after tool errors:** when the model gets `ERROR:` it sometimes answers in text instead of retrying. A structured re-prompt, or code applying the suggested correction, would help.
 - **An approval queue** for quotes above ₹5,000, and **SSE streaming** of the already-guarded reply.
 - **Persistent storage** (SQLite) for leads, escalations and conversations.
