@@ -134,6 +134,10 @@ def cmd_quote(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_report(args: argparse.Namespace) -> int:
+    return subprocess.call([sys.executable, str(PROJECT_ROOT / "scripts" / "build_report.py")])
+
+
 def cmd_chat(args: argparse.Namespace) -> int:
     import uuid
 
@@ -207,6 +211,9 @@ def main() -> int:
     p_chat = subparsers.add_parser("chat", help="Interactive terminal chat with the agent.")
     p_chat.add_argument("--conversation-id", default=None, help="Reuse a specific conversation id.")
     p_chat.set_defaults(func=cmd_chat)
+
+    p_report = subparsers.add_parser("report", help="Build TECHNICAL_REPORT.pdf from reports/.")
+    p_report.set_defaults(func=cmd_report)
 
     args, extra_args = parser.parse_known_args()
     args.extra_args = extra_args

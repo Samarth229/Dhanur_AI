@@ -5,3 +5,5 @@ openai==1.109.1
 python-dotenv==1.1.1
 pytest==8.4.2
 httpx==0.28.1
+markdown==3.9
+pypdf==6.1.1

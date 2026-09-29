@@ -5,3 +5,4 @@ __pycache__/
 *.pyc
 .vscode/
 .idea/
+reports/_technical_report.html
