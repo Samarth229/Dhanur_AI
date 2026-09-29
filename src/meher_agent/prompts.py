@@ -18,8 +18,16 @@ _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 LANGUAGE_INSTRUCTIONS = {
     "en": "Reply in English.",
-    "hi": "Reply in Hindi using Devanagari script. Keep product names, ₹ amounts and digits 0-9 as they are.",
-    "hinglish": "Reply in Hinglish (Hindi written in Roman/English letters, like the customer). Use digits 0-9.",
+    "hi": (
+        "Reply in Hindi using Devanagari script. Keep product names, ₹ amounts and digits 0-9 "
+        "as they are. Keep the reply short (1-3 sentences) and answer only what was asked; "
+        "don't add extra policy details."
+    ),
+    "hinglish": (
+        "Reply in Hinglish (Hindi written in Roman/English letters, like the customer). Use "
+        "digits 0-9. Keep the reply short (1-3 sentences) and answer only what was asked; "
+        "don't add extra policy details."
+    ),
 }
 
 
